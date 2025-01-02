@@ -44,3 +44,4 @@ app.*.map.json
 
 # Api Key
 /lib/infrastructure/api_keys.dart
+/lib/services/firebase_options.dart
