@@ -86,4 +86,13 @@ class SettingsController {
       log(e.message!);
     }
   }
+
+  // Open App
+  Future<void> openApp(String packageName) async {
+    try {
+      await platform.invokeMethod('openApp', {'packageName': packageName});
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
 }

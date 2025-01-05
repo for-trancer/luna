@@ -19,6 +19,10 @@ import android.media.RingtoneManager
 import android.media.Ringtone
 import android.os.Build
 import java.util.*
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Bundle
 
 class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var channel: MethodChannel
@@ -79,6 +83,12 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
                 val hour = call.argument<Int>("hour") ?: 0
                 val minute = call.argument<Int>("minute") ?: 0
                 setAlarm(year, month, day, hour, minute) // Call the setAlarm method
+                result.success(null)
+            }
+
+            "openApp" -> {
+                val packageName = call.argument<String>("packageName")?: ""
+                openApp(packageName)
                 result.success(null)
             }
 
@@ -194,6 +204,21 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         }
 
         Log.d("SettingsManager", "Alarm set for: $year-$month-$day $hour:$minute")
+    }
+
+    // Open App
+    private fun openApp(packageName: String){
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+        if (intent != null) {
+            // Set the FLAG_ACTIVITY_NEW_TASK flag
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } else {
+            // Handle the case where the app is not installed
+            val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+            marketIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) // Also set the flag for the market intent
+            context.startActivity(marketIntent)
+        }
     }
 
 
