@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 class TypewriterText extends StatefulWidget {
@@ -20,29 +19,51 @@ class TypewriterText extends StatefulWidget {
 
 class _TypewriterTextState extends State<TypewriterText> {
   String displayedText = ""; // Text being displayed
-  late final int totalCharacters;
-  late final int interval; // Interval between each character
+  int totalCharacters = 0; // Initialize to 0
+  int interval = 0; // Initialize to 0
+  Timer? _typingTimer; // Timer for typing effect
 
   @override
   void initState() {
     super.initState();
-    totalCharacters = widget.text.length;
-    interval = (widget.duration.inMilliseconds / totalCharacters).floor();
     _startTyping();
   }
 
+  @override
+  void didUpdateWidget(TypewriterText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the text has changed, reset the displayed text and start typing again
+    if (oldWidget.text != widget.text) {
+      displayedText = ""; // Reset displayed text
+      _startTyping(); // Restart typing animation
+    }
+  }
+
   void _startTyping() {
-    int currentIndex = 0;
-    Timer.periodic(Duration(milliseconds: interval), (timer) {
-      if (currentIndex < totalCharacters) {
-        setState(() {
-          displayedText = widget.text.substring(0, currentIndex + 1);
-        });
-        currentIndex++;
-      } else {
-        timer.cancel(); // Stop the timer when typing is complete
-      }
-    });
+    totalCharacters = widget.text.length;
+    if (totalCharacters > 0) {
+      interval = (widget.duration.inMilliseconds / totalCharacters).floor();
+      int currentIndex = 0;
+
+      // Cancel any existing timer before starting a new one
+      _typingTimer?.cancel();
+      _typingTimer = Timer.periodic(Duration(milliseconds: interval), (timer) {
+        if (currentIndex < totalCharacters) {
+          setState(() {
+            displayedText = widget.text.substring(0, currentIndex + 1);
+          });
+          currentIndex++;
+        } else {
+          timer.cancel(); // Stop the timer when typing is complete
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _typingTimer?.cancel(); // Cancel the timer when disposing
+    super.dispose();
   }
 
   @override

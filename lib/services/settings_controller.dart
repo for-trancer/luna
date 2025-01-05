@@ -70,4 +70,20 @@ class SettingsController {
       log(e.message!);
     }
   }
+
+  // Alarm
+  Future<void> toggleAlarm(
+      int year, int month, int day, int hour, int minute) async {
+    try {
+      await platform.invokeMethod('setAlarm', {
+        'year': year,
+        'month': month,
+        'day': day,
+        'hour': hour,
+        'minute': minute
+      });
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
 }

@@ -77,9 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         _homeService.imageDataNotifier.value)
                               else
                                 TypewriterText(
-                                  text: responseText.isEmpty
-                                      ? "Hello, How can I assist you?"
-                                      : responseText,
+                                  text: responseText,
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold),
                                 ),

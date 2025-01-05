@@ -1,8 +1,10 @@
 package com.ftrance.luna
 
+import com.ftrance.luna.AlarmReceiver
 import android.util.Log
 import android.content.Context
 import android.content.Intent
+import android.app.PendingIntent
 import android.net.wifi.WifiManager
 import android.provider.Settings
 import android.bluetooth.BluetoothAdapter
@@ -11,6 +13,12 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import android.media.AudioManager
 import android.content.ComponentName
+import android.app.AlarmManager
+import android.content.BroadcastReceiver
+import android.media.RingtoneManager
+import android.media.Ringtone
+import android.os.Build
+import java.util.*
 
 class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var channel: MethodChannel
@@ -61,6 +69,16 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
 
             "toggleHotspot" -> {
                 toggleHotspot()
+                result.success(null)
+            }
+
+            "setAlarm" -> {
+                val year = call.argument<Int>("year") ?: 0
+                val month = call.argument<Int>("month") ?: 0
+                val day = call.argument<Int>("day") ?: 0
+                val hour = call.argument<Int>("hour") ?: 0
+                val minute = call.argument<Int>("minute") ?: 0
+                setAlarm(year, month, day, hour, minute) // Call the setAlarm method
                 result.success(null)
             }
 
@@ -154,6 +172,30 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
             Log.e("SettingsManager", "Failed to open hotspot settings: ${e.message}")
         }
     }
+
+    // Set Alarm
+    private fun setAlarm(year: Int, month: Int, day: Int, hour: Int, minute: Int) {
+        Log.d("SettingsManager", "setAlarm called with: $year-$month-$day $hour:$minute")
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, AlarmReceiver::class.java) // Create an Intent for the AlarmReceiver
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        // Set the calendar for the alarm
+        val calendar = Calendar.getInstance().apply {
+            set(year, month - 1, day, hour, minute, 0) // Month is 0-based in Calendar
+            set(Calendar.SECOND, 0)
+        }
+
+        // Set the alarm
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+        }
+
+        Log.d("SettingsManager", "Alarm set for: $year-$month-$day $hour:$minute")
+    }
+
 
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {

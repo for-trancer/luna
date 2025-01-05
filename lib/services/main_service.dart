@@ -82,7 +82,7 @@ class MainService {
   }
 
   // Named Entity Recognition
-  Future<DataModel?> fetchData(String userInput) async {
+  Future<List<DataModel?>> fetchData(String userInput) async {
     String localhost = ApiEndPoints.localhost;
     String parameter = ApiEndPoints.data;
     String url = '$localhost$parameter';
@@ -104,10 +104,13 @@ class MainService {
 
     if (response.data != null && response.data.isNotEmpty) {
       // Assuming response.data is a list of entities
-      return DataModel.fromJson(response.data[0] as Map<String, dynamic>);
+      List<DataModel> dataModels = (response.data as List)
+          .map((item) => DataModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+      return dataModels;
     } else {
       // Return null or a default DataModel instance if the list is empty
-      return null; // or return DataModel(); if you want to return a default instance
+      return []; // or return DataModel(); if you want to return a default instance
     }
   }
 
