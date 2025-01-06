@@ -92,6 +92,12 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
                 result.success(null)
             }
 
+            "playYoutube" -> {
+                val searchText = call.argument<String>("searchText") ?: ""
+                playYoutube(searchText)
+                result.success(null)
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -221,7 +227,20 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
-
+    // Youtube
+    private fun playYoutube(searchText: String) {
+        // Construct the YouTube search URL
+        val searchUrl = "https://www.youtube.com/results?search_query=${Uri.encode(searchText)}"
+        
+        // Create an intent to open the URL
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl))
+        
+        // Add the FLAG_ACTIVITY_NEW_TASK flag
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
+        // Start the activity
+        context.startActivity(intent)
+    }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)

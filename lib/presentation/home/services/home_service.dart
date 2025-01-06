@@ -144,11 +144,13 @@ class HomeService {
   Future<void> generateImage(String prompt) async {
     try {
       ImageModel result = await _service.fetchImage(prompt);
+      isImageNotifier.value = true;
+      isImageNotifier.notifyListeners();
+      imageDataNotifier.value = result.image ?? '';
+      imageDataNotifier.notifyListeners();
       _ttsService.speak(
           "Your image is ready! Here it is. Let me know if you'd like to create another one");
-      isImageNotifier.value = true;
       dev.log('Generated image Data: ${result.image}');
-      imageDataNotifier.value = result.image ?? '';
     } catch (e) {
       isImageNotifier.value = false;
       _ttsService.speak(
@@ -185,6 +187,8 @@ class HomeService {
 
   // Process data based on intent
   Future<void> processData(String intent, String textData) async {
+    isImageNotifier.value = false;
+    imageDataNotifier.value = "";
     final List<DataModel?> results = await _service.fetchData(textData);
     if (results.isEmpty) {
       // do nothing
@@ -331,7 +335,18 @@ class HomeService {
         if (alarmTime != null) {
           _settingsController.toggleAlarm(alarmTime.year, alarmTime.month,
               alarmTime.day, alarmTime.hour, alarmTime.minute);
-          _ttsService.speak("alarm set for $time $period $date");
+          String alarmText;
+          if (date != null && period != null) {
+            alarmText = "alarm set for $time $period $date";
+            _ttsService.speak(alarmText);
+          } else if (date != null) {
+            alarmText = "alarm set for $time $date";
+            _ttsService.speak(alarmText);
+          } else {
+            alarmText = "alarm set for $time $period";
+            _ttsService.speak(alarmText);
+          }
+          responseTextNotifier.value = alarmText;
         }
       } else {
         _ttsService
@@ -398,6 +413,55 @@ class HomeService {
         } else {
           _ttsService.speak("please specify the app name");
         }
+      }
+    } else if (intent == "play_music") {
+      String? artistName;
+      String? songName;
+      String? searchText;
+      if (results.isNotEmpty) {
+        for (var model in results) {
+          if (model!.entity == "B-song_name") {
+            songName = (songName ?? '') + (model.word!.trim());
+          } else if (model.entity == "B-artist_name" ||
+              model.entity == "I-artist_name") {
+            artistName = (artistName ?? '') + (model.word!.trim());
+          }
+        }
+        if (songName != null || artistName != null) {
+          if (songName != null) {
+            songName = songName.substring(1).replaceAll("▁", " ");
+          }
+          if (artistName != null) {
+            artistName = artistName.substring(1).replaceAll("▁", " ");
+          }
+          searchText = "$songName $artistName";
+          String songText;
+          if (songName != null && artistName != null) {
+            songText = "playing $songName by $artistName";
+            _ttsService.speak(songText);
+            responseTextNotifier.value = songText;
+          } else if (songName != null) {
+            songText = "playing $songName";
+            _ttsService.speak(songText);
+            responseTextNotifier.value = songText;
+          } else {
+            songText = "playing an song sung by $artistName";
+            _ttsService.speak(songText);
+            responseTextNotifier.value = songText;
+          }
+          _settingsController.playYoutube(searchText);
+        } else {
+          String songText =
+              "Got it! Please tell me the name of the song or the artist you'd like to listen to.";
+          _ttsService.speak(songText);
+          responseTextNotifier.value = songText;
+        }
+      } else {
+        String songText;
+        songText =
+            "Sure! Could you tell me the name of the song or artist you'd like me to play?";
+        _ttsService.speak(songText);
+        responseTextNotifier.value = songText;
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";

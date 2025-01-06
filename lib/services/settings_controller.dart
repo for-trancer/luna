@@ -95,4 +95,13 @@ class SettingsController {
       log(e.message!);
     }
   }
+
+  // Youtube
+  Future<void> playYoutube(String searchText) async {
+    try {
+      await platform.invokeMethod('playYoutube', {'searchText': searchText});
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
 }
