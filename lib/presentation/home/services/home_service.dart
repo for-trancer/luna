@@ -1,15 +1,16 @@
-import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:luna/application/models/data/data_model.dart';
 import 'package:luna/application/models/image/image_model.dart';
 import 'package:luna/core/constants/constants.dart';
 import 'package:luna/services/main_service.dart';
 import 'package:luna/presentation/home/services/Tts_Service.dart';
 import 'package:luna/services/settings_controller.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeService {
   final MainService _service = MainService();
@@ -140,6 +141,10 @@ class HomeService {
     }
   }
 
+  Future<List<Contact>> fetchContacts() async {
+    return await FlutterContacts.getContacts(withProperties: true);
+  }
+
   // Generate image based on prompt
   Future<void> generateImage(String prompt) async {
     try {
@@ -156,6 +161,68 @@ class HomeService {
       _ttsService.speak(
           "Failed to generate the image. Please try again later or check your network connection.");
       dev.log(e.toString());
+    }
+  }
+
+  Future<void> getContactDetails(String contactName) async {
+    List<Contact> contacts = await fetchContacts();
+    List<String> matchingNames = [];
+    List<Phone> phoneNumbers = [];
+    int matchCount = 0;
+
+    for (var contact in contacts) {
+      // Check for partial match
+      if (contact.displayName
+          .toLowerCase()
+          .contains(contactName.toLowerCase())) {
+        matchingNames.add(contact.displayName);
+        phoneNumbers.add(contact.phones.first);
+        matchCount++;
+      }
+    }
+
+    if (matchCount > 1) {
+      String errorText =
+          "There are multiple contacts saved under that name. Please specify which one to call";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+      await Future.delayed(const Duration(seconds: 5));
+
+      for (var name in matchingNames) {
+        await _ttsService.flutterTts.speak(name);
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    } else if (matchCount == 0) {
+      String errorText = "No contact named $contactName found!";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+    } else if (matchCount == 1) {
+      // If exactly one contact is found, handle the call
+      String successText = "Calling ${matchingNames[0]}.";
+      await _ttsService.flutterTts.speak(successText);
+      responseTextNotifier.value = successText;
+      makeCall(phoneNumbers[0].number);
+      // Logic to initiate the call can be added here
+    }
+  }
+
+  Future<void> makeCall(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+
+    if (await canLaunch(launchUri.toString())) {
+      await launch(launchUri.toString());
+    } else {
+      throw 'Could not launch $launchUri';
+    }
+  }
+
+  Future<void> requestCallPermission() async {
+    var status = await Permission.phone.status;
+    if (!status.isGranted) {
+      await Permission.phone.request();
     }
   }
 
@@ -462,6 +529,23 @@ class HomeService {
             "Sure! Could you tell me the name of the song or artist you'd like me to play?";
         _ttsService.speak(songText);
         responseTextNotifier.value = songText;
+      }
+    } else if (textData.contains("call")) {
+      if (results.isNotEmpty) {
+        String? contactName;
+        for (var model in results) {
+          if (model!.entity == "B-person" ||
+              model.entity == "I-person" ||
+              model.entity == "B-relation") {
+            contactName = (contactName ?? '') + (model.word!.trim());
+          }
+        }
+        contactName = contactName!.substring(1).replaceAll("▁", " ");
+        getContactDetails(contactName);
+      } else {
+        String errorText = "please tell me who to call?";
+        _ttsService.speak(errorText);
+        responseTextNotifier.value = errorText;
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";
