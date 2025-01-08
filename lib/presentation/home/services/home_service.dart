@@ -219,10 +219,43 @@ class HomeService {
     }
   }
 
+  Future<void> sendSMS(String phoneNumber, String message) async {
+    final Uri smsUri = Uri(
+      scheme: 'sms',
+      path: phoneNumber,
+      queryParameters: {'body': message},
+    );
+    requestSmsPermission();
+    if (await canLaunch(smsUri.toString())) {
+      await launch(smsUri.toString());
+    } else {
+      throw 'Could not launch $smsUri';
+    }
+  }
+
   Future<void> requestCallPermission() async {
     var status = await Permission.phone.status;
     if (!status.isGranted) {
       await Permission.phone.request();
+    }
+  }
+
+  Future<void> requestSmsPermission() async {
+    // Check the current status of SMS permission
+    var status = await Permission.sms.status;
+
+    // If the permission is denied, request it
+    if (status.isDenied) {
+      await Permission.sms.request();
+    }
+
+    // Check the permission status again after requesting
+    if (await Permission.sms.isGranted) {
+      print("SMS permission granted.");
+      // Proceed with SMS functionality
+    } else {
+      print("SMS permission denied.");
+      // Handle the case when permission is denied
     }
   }
 
@@ -242,6 +275,58 @@ class HomeService {
   // Fetch Package Name Of An App
   String getPackageName(String appName) {
     return appNameToPackageName[appName] ?? "";
+  }
+
+  Future<void> sendTextMessage(String contactName, String textData) async {
+    List<Contact> contacts = await fetchContacts();
+    List<String> matchingNames = [];
+    List<Phone> phoneNumbers = [];
+    int matchCount = 0;
+
+    for (var contact in contacts) {
+      // Check for partial match
+      if (contact.displayName
+          .toLowerCase()
+          .contains(contactName.toLowerCase())) {
+        matchingNames.add(contact.displayName);
+        phoneNumbers.add(contact.phones.first);
+        matchCount++;
+      }
+    }
+
+    if (matchCount > 1) {
+      String errorText =
+          "There are multiple contacts saved under that name. Please specify which one to text";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+      await Future.delayed(const Duration(seconds: 6));
+
+      for (var name in matchingNames) {
+        await _ttsService.flutterTts.speak(name);
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    } else if (matchCount == 0) {
+      String errorText = "No contact named $contactName found!";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+    } else if (matchCount == 1) {
+      Future<String?> sendMsg;
+      // If exactly one contact is found, handle the text
+      String successText = "sending text to ${matchingNames[0]}.";
+      await _ttsService.flutterTts.speak(successText);
+      responseTextNotifier.value = successText;
+
+      String result;
+
+      sendMsg = _service.fetchInformation(
+          "Extract only the message content from the following instruction dont say any other things:" +
+              textData);
+      sendMsg.then((value) {
+        result = value ?? '';
+        dev.log(result);
+        sendSMS(phoneNumbers[0].number, result);
+      });
+    }
   }
 
   // Say Greetings
@@ -546,6 +631,26 @@ class HomeService {
         String errorText = "please tell me who to call?";
         _ttsService.speak(errorText);
         responseTextNotifier.value = errorText;
+      }
+    } else if (textData.contains("text") ||
+        textData.contains("text message") ||
+        textData.contains("message")) {
+      String errorText;
+      if (results.isNotEmpty) {
+        String? contactName;
+        for (var model in results) {
+          if (model!.entity == "B-person" ||
+              model.entity == "I-person" ||
+              model.entity == "B-relation") {
+            contactName = (contactName ?? "") + model.word!.trim();
+          }
+        }
+
+        contactName = contactName!.substring(1).replaceAll("▁", " ");
+
+        sendTextMessage(contactName, textData);
+      } else {
+        errorText = "please tell me who to text?";
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";
