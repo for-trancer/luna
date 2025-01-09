@@ -277,6 +277,7 @@ class HomeService {
     return appNameToPackageName[appName] ?? "";
   }
 
+  // Send Message
   Future<void> sendTextMessage(String contactName, String textData) async {
     List<Contact> contacts = await fetchContacts();
     List<String> matchingNames = [];
@@ -327,6 +328,32 @@ class HomeService {
         sendSMS(phoneNumbers[0].number, result);
       });
     }
+  }
+
+  // Send Email
+  Future<void> sendEmail(String email, String subject, String msg) async {
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: email,
+      query: encodeQueryParameters({
+        'subject': subject,
+        'body': msg,
+      }),
+    );
+
+    if (await canLaunch(emailLaunchUri.toString())) {
+      await launch(emailLaunchUri.toString());
+    } else {
+      throw 'Could not launch $emailLaunchUri';
+    }
+  }
+
+  // Helper function to encode query parameters
+  String encodeQueryParameters(Map<String, String> params) {
+    return params.entries
+        .map((e) =>
+            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .join('&');
   }
 
   // Say Greetings
@@ -566,7 +593,9 @@ class HomeService {
           _ttsService.speak("please specify the app name");
         }
       }
-    } else if (intent == "play_music") {
+    }
+    // Play music
+    else if (intent == "play_music") {
       String? artistName;
       String? songName;
       String? searchText;
@@ -615,7 +644,9 @@ class HomeService {
         _ttsService.speak(songText);
         responseTextNotifier.value = songText;
       }
-    } else if (textData.contains("call")) {
+    }
+    // Call
+    else if (textData.contains("call")) {
       if (results.isNotEmpty) {
         String? contactName;
         for (var model in results) {
@@ -632,7 +663,9 @@ class HomeService {
         _ttsService.speak(errorText);
         responseTextNotifier.value = errorText;
       }
-    } else if (textData.contains("text") ||
+    }
+    // Text Message
+    else if (textData.contains("text") ||
         textData.contains("text message") ||
         textData.contains("message")) {
       String errorText;
@@ -651,6 +684,46 @@ class HomeService {
         sendTextMessage(contactName, textData);
       } else {
         errorText = "please tell me who to text?";
+      }
+    }
+    // Remove Alarm
+    else if (intent == "alarm_remove") {
+      _ttsService.speak("alarm is turned off");
+      dev.log("alarm is turned off");
+      _settingsController.toggleAlarmOff();
+    }
+    // Send Mail
+    else if (intent == 'email_sendemail') {
+      String? email;
+      String? subject;
+      String? msg;
+
+      if (results.isNotEmpty) {
+        for (var model in results) {
+          if (model!.entity == "B-person" || model.entity == "I-person") {
+            email = (email ?? "") + model.word!.trim().toString();
+          }
+        }
+
+        email = email!.substring(1).replaceAll("▁", "") + "@gmail.com";
+        email = email.toLowerCase();
+
+        String? dataSubject = "Quick Remainder";
+        String? dataMsg = await _service.fetchInformation(
+            "Extract only the message body content from the following instruction. Don't say anything else, only the body content: " +
+                textData);
+        subject = dataSubject;
+        msg = dataMsg;
+        dev.log("Fetched subject: $subject");
+        dev.log("Fetched message: $msg");
+
+        _ttsService.speak("Sending mail to $email");
+        responseTextNotifier.value = "Sending mail to $email";
+        sendEmail(email, subject, msg!);
+      } else {
+        String errorText = "Please specify who to send the email to.";
+        _ttsService.speak(errorText);
+        responseTextNotifier.value = errorText;
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";

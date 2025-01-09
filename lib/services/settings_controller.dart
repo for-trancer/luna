@@ -87,6 +87,15 @@ class SettingsController {
     }
   }
 
+  // Remove Alarm
+  void toggleAlarmOff() {
+    try {
+      platform.invokeMethod('toggleAlarmOff');
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
+
   // Open App
   Future<void> openApp(String packageName) async {
     try {

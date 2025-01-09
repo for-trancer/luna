@@ -98,6 +98,16 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
                 result.success(null)
             }
 
+            "toggleAlarmOff" -> {
+                val year = call.argument<Int>("year") ?: 0
+                val month = call.argument<Int>("month") ?: 0
+                val day = call.argument<Int>("day") ?: 0
+                val hour = call.argument<Int>("hour") ?: 0
+                val minute = call.argument<Int>("minute") ?: 0
+                toggleAlarmOff(year, month, day, hour, minute) 
+                result.success(null)
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -208,6 +218,18 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         } else {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
         }
+
+        Log.d("SettingsManager", "Alarm set for: $year-$month-$day $hour:$minute")
+    }
+
+    // Alarm Off
+    private fun toggleAlarmOff(year: Int, month: Int, day: Int, hour: Int, minute: Int) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, AlarmReceiver::class.java) // Create an Intent for the AlarmReceiver
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        // Remove The Alarm
+        alarmManager.cancel(pendingIntent)
 
         Log.d("SettingsManager", "Alarm set for: $year-$month-$day $hour:$minute")
     }
