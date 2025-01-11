@@ -1,7 +1,7 @@
 class ApiEndPoints {
   // Localhost
   // static String localhost = 'http://10.0.2.2:5000/'; // Emulator
-  static String localhost = 'http://192.168.1.36:5000/';
+  static String localhost = 'http://192.168.1.40:5000/';
 
   // Services
   static String intent = 'predict_intent';

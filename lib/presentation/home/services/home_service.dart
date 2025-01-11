@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:luna/application/models/data/data_model.dart';
 import 'package:luna/application/models/image/image_model.dart';
 import 'package:luna/core/constants/constants.dart';
@@ -16,6 +17,7 @@ class HomeService {
   final MainService _service = MainService();
   final TtsService _ttsService = TtsService();
   final SettingsController _settingsController = SettingsController();
+  final SmsQuery query = SmsQuery();
 
   int index = 0;
 
@@ -665,9 +667,7 @@ class HomeService {
       }
     }
     // Text Message
-    else if (textData.contains("text") ||
-        textData.contains("text message") ||
-        textData.contains("message")) {
+    else if (textData.contains("text") || textData.contains("text message")) {
       String errorText;
       if (results.isNotEmpty) {
         String? contactName;
@@ -724,6 +724,18 @@ class HomeService {
         String errorText = "Please specify who to send the email to.";
         _ttsService.speak(errorText);
         responseTextNotifier.value = errorText;
+      }
+    } else if (intent == "email_query" && textData.contains("read")) {
+      List<SmsMessage> messages = await query.querySms(
+        kinds: [SmsQueryKind.inbox, SmsQueryKind.sent],
+      );
+
+      messages.sort((a, b) => b.date!.compareTo(a.date!));
+      for (int i = 0; i < messages.length && i < 3; i++) {
+        _ttsService.speak(
+            "message from ${messages[i].address!} saying ${messages[i].body!}");
+        dev.log("${messages[i].address} ${messages[i].body}");
+        await Future.delayed(Duration(seconds: messages[i].body!.length ~/ 10));
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";
