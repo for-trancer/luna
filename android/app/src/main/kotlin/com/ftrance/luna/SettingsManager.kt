@@ -82,7 +82,18 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
                 val day = call.argument<Int>("day") ?: 0
                 val hour = call.argument<Int>("hour") ?: 0
                 val minute = call.argument<Int>("minute") ?: 0
-                setAlarm(year, month, day, hour, minute) // Call the setAlarm method
+                setAlarm(year, month, day, hour, minute) 
+                result.success(null)
+            }
+
+            "setReminder" -> {
+                val year = call.argument<Int>("year") ?: 0
+                val month = call.argument<Int>("month") ?: 0
+                val day = call.argument<Int>("day") ?: 0
+                val hour = call.argument<Int>("hour") ?: 0
+                val minute = call.argument<Int>("minute") ?: 0
+                val title = call.argument<String>("title") ?: "Reminder"
+                setReminder(year,month,day,hour,minute,title)
                 result.success(null)
             }
 
@@ -206,13 +217,11 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         val intent = Intent(context, AlarmReceiver::class.java) // Create an Intent for the AlarmReceiver
         val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
 
-        // Set the calendar for the alarm
         val calendar = Calendar.getInstance().apply {
             set(year, month - 1, day, hour, minute, 0) // Month is 0-based in Calendar
             set(Calendar.SECOND, 0)
         }
 
-        // Set the alarm
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
         } else {
@@ -220,6 +229,29 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         }
 
         Log.d("SettingsManager", "Alarm set for: $year-$month-$day $hour:$minute")
+    }
+
+    // Set Reminder
+    private fun setReminder(year: Int, month: Int, day: Int, hour: Int, minute: Int, title: String) {
+        Log.d("SettingsManager", "setReminder called with: $year-$month-$day $hour:$minute, Title: $title")
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            putExtra("title", title) 
+        }
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        val calendar = Calendar.getInstance().apply {
+            set(year, month - 1, day, hour, minute, 0) // Month is 0-based in Calendar
+            set(Calendar.SECOND, 0)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+        }
+
+        Log.d("SettingsManager", "Reminder set for: $year-$month-$day $hour:$minute with title: $title")
     }
 
     // Alarm Off

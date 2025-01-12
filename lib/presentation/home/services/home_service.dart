@@ -43,6 +43,22 @@ class HomeService {
     "sunday": DateTime.sunday,
   };
 
+  // For Reminder
+  Map<String, int> monthMap = {
+    "january": DateTime.january,
+    "february": DateTime.february,
+    "march": DateTime.march,
+    "april": DateTime.april,
+    "may": DateTime.may,
+    "june": DateTime.june,
+    "july": DateTime.july,
+    "august": DateTime.august,
+    "september": DateTime.september,
+    "october": DateTime.october,
+    "november": DateTime.november,
+    "december": DateTime.december,
+  };
+
   // Package Names
   Map<String, String> appNameToPackageName = {
     'spotify': 'com.spotify.music',
@@ -449,32 +465,27 @@ class HomeService {
       String? period;
 
       for (int i = 0; i < results.length; i++) {
-        final entity = results[i]?.entity; // Use safe access
+        final entity = results[i]?.entity;
 
         if (entity == "B-time") {
-          time = (time ?? "") +
-              (results[i]?.word?.trim() ?? ""); // Use safe access
+          time = (time ?? "") + (results[i]?.word?.trim() ?? "");
         } else if (entity == "I-time") {
-          period = (period ?? "") +
-              (results[i]?.word?.trim().toLowerCase() ?? ""); // Safe access
+          period =
+              (period ?? "") + (results[i]?.word?.trim().toLowerCase() ?? "");
         } else if (entity == "B-date") {
-          date = (date ?? "") +
-              (results[i]?.word?.trim().toLowerCase() ?? ""); // Safe access
+          date = (date ?? "") + (results[i]?.word?.trim().toLowerCase() ?? "");
         }
       }
 
-      // Remove the starting character if date is not null
       if (date != null && date.isNotEmpty) {
-        date = date.substring(1); // to remove the starting character _
+        date = date.substring(1);
       }
       if (period != null && period.isNotEmpty) {
-        period = period.replaceAll(".", "");
-        period = period.substring(1);
+        period = period.substring(1).replaceAll(".", "");
       }
 
       if (time != null) {
-        // Remove leading character if necessary
-        time = time.substring(1); // Ensure this is assigned back to time
+        time = time.substring(1);
         List<String> timeParts = time.split(':');
 
         if (timeParts.length == 2) {
@@ -486,7 +497,6 @@ class HomeService {
         }
 
         if (period != null) {
-          // Check if period is not null
           if (period.toLowerCase() == "pm" && hour != null && hour != 12) {
             hour = (hour + 12);
           } else if (period.toLowerCase() == "am" && hour == 12) {
@@ -497,7 +507,6 @@ class HomeService {
         dev.log(
             "time : $time am/pm : $period date: $date hour: $hour minute: $minute");
 
-        // If Only Time Is Given
         if (date == null || date.isEmpty) {
           alarmTime = DateTime(
               now.year, now.month, now.day, hour ?? now.hour, minute ?? 0);
@@ -736,6 +745,111 @@ class HomeService {
             "message from ${messages[i].address!} saying ${messages[i].body!}");
         dev.log("${messages[i].address} ${messages[i].body}");
         await Future.delayed(Duration(seconds: messages[i].body!.length ~/ 10));
+      }
+    } else if (intent == "calendar_set") {
+      DateTime now = DateTime.now();
+      DateTime? reminderTime;
+      String? time;
+      int? minute;
+      int? hour;
+      int? day;
+      String? tempDay;
+      String? month;
+      String? period;
+      String? title;
+
+      if (results.isNotEmpty) {
+        for (var model in results) {
+          if (model!.entity == "B-date") {
+            month = (month ?? '') + model.word!.trim().toLowerCase();
+          } else if (model.entity == "I-date") {
+            tempDay = (tempDay ?? '') + model.word!.trim().toLowerCase();
+          } else if (model.entity == "B-time") {
+            time = (time ?? '') + model.word!.trim();
+          } else if (model.entity == "I-time") {
+            period = (period ?? '') + model.word!.trim().toLowerCase();
+          }
+        }
+
+        if (tempDay != null) {
+          tempDay = tempDay.substring(1).replaceAll("▁", "");
+          day = int.tryParse(tempDay);
+        }
+
+        if (month != null) {
+          month = month.substring(1).replaceAll("▁", "");
+        }
+
+        if (period != null) {
+          period = period.substring(1).replaceAll("▁", "");
+          period = period.replaceAll(".", "");
+        }
+
+        if (time != null) {
+          time = time.substring(1).replaceAll("▁", "");
+          List<String> timeParts = time.split(":");
+
+          if (timeParts.length == 2) {
+            hour = int.tryParse(timeParts[0]);
+            minute = int.tryParse(timeParts[1]);
+          } else {
+            dev.log("invalid time format: $time");
+          }
+
+          if (period != null) {
+            if (period == "pm" && hour != null && hour != 12) {
+              hour = (hour + 12);
+            } else if (period == "am" && hour == 12) {
+              hour = 0;
+            }
+          }
+
+          dev.log(
+              "time : $time am/pm : $period month: $month day:$day hour: $hour minute: $minute");
+
+          if (month == null && tempDay == null) {
+            dev.log("month tempday null");
+            reminderTime = DateTime(
+                now.year, now.month, now.day, hour ?? now.hour, minute ?? 0);
+            if (reminderTime.isBefore(now)) {
+              reminderTime = reminderTime.add(const Duration(days: 1));
+            }
+          } else if (month == "tomorrow") {
+            dev.log("tommorow");
+            reminderTime = DateTime(now.year, now.month, now.day + 1,
+                hour ?? now.hour, minute ?? 0);
+          } else if (weekdayMap.containsKey(month!.toLowerCase())) {
+            dev.log("weekday map");
+            reminderTime = await getNextWeekDayDate(month, hour!);
+          } else if (monthMap.containsKey(month)) {
+            dev.log("month map");
+            int data = monthMap[month] ?? now.month;
+            reminderTime = DateTime(now.year, data, day!, hour!, minute!);
+          }
+
+          try {
+            String prompt =
+                "Extract the reminder title from the following input. The reminder title is the phrase describing what the reminder is about, excluding any dates, times, or additional commands. Do not include any extra words, symbols, or formatting. Input: $textData";
+            title = await _service.fetchInformation(prompt);
+            dev.log("Extracted Title: $title");
+          } catch (e) {
+            dev.log("Error extracting title: $e");
+          }
+
+          if (reminderTime != null) {
+            _settingsController.setReminder(
+                reminderTime!.year,
+                reminderTime.month,
+                reminderTime.day,
+                reminderTime.hour,
+                reminderTime.day,
+                title!);
+            dev.log(reminderTime.toString());
+            _ttsService.speak("reminder set for $title");
+          }
+        }
+      } else {
+        _ttsService.speak("please specify when to set the remainder!");
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";

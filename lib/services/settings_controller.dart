@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/rendering.dart';
@@ -109,6 +110,23 @@ class SettingsController {
   Future<void> playYoutube(String searchText) async {
     try {
       await platform.invokeMethod('playYoutube', {'searchText': searchText});
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
+
+  // Reminder
+  Future<void> setReminder(
+      int year, int month, int day, int hour, int minute, String title) async {
+    try {
+      await platform.invokeMethod('setReminder', {
+        'year': year,
+        'month': month,
+        'day': day,
+        'hour': hour,
+        'minute': minute,
+        'title': title,
+      });
     } on PlatformException catch (e) {
       log(e.message!);
     }
