@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:luna/application/models/data/data_model.dart';
 import 'package:luna/application/models/image/image_model.dart';
 import 'package:luna/core/constants/constants.dart';
@@ -159,6 +161,41 @@ class HomeService {
     }
   }
 
+  // Get Current Location
+  Future<Position> getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      _ttsService.speak("Location services are disabled");
+      return Future.error("Location servicse are disabled");
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        _ttsService.speak("Location permissions are denied");
+        return Future.error("Location permissions are denied");
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      _ttsService.speak("location permissions are denied permanently");
+      return Future.error("Location permissions are denied permanently");
+    }
+
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+  }
+
+  //Get Destination Location
+  Future<List<Location>> getDestinationLocation(String address) async {
+    List<Location> locations = await locationFromAddress(address);
+    return locations;
+  }
+
   Future<List<Contact>> fetchContacts() async {
     return await FlutterContacts.getContacts(withProperties: true);
   }
@@ -237,6 +274,17 @@ class HomeService {
     }
   }
 
+  // Navigation
+  void launchMaps(Position current, Location destination) async {
+    final Uri url = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${destination.latitude},${destination.longitude}');
+    if (await canLaunch(url.toString())) {
+      await launch(url.toString());
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
+
   Future<void> sendSMS(String phoneNumber, String message) async {
     final Uri smsUri = Uri(
       scheme: 'sms',
@@ -259,21 +307,16 @@ class HomeService {
   }
 
   Future<void> requestSmsPermission() async {
-    // Check the current status of SMS permission
     var status = await Permission.sms.status;
 
-    // If the permission is denied, request it
     if (status.isDenied) {
       await Permission.sms.request();
     }
 
-    // Check the permission status again after requesting
     if (await Permission.sms.isGranted) {
       print("SMS permission granted.");
-      // Proceed with SMS functionality
     } else {
       print("SMS permission denied.");
-      // Handle the case when permission is denied
     }
   }
 
@@ -850,6 +893,34 @@ class HomeService {
         }
       } else {
         _ttsService.speak("please specify when to set the remainder!");
+      }
+    } else if (intent == "transport_query") {
+      if (results.isNotEmpty) {
+        String? destination;
+        Position currentLocation;
+        List<Location> destinations;
+        Location location;
+        for (var model in results) {
+          if (model!.entity == "B-place_name" ||
+              model.entity == "I-place_name") {
+            destination = (destination ?? "") + (model.word!.trim());
+          }
+        }
+        if (destination != null) {
+          destination = destination.substring(1).replaceAll("▁", " ");
+        }
+
+        currentLocation = await getCurrentLocation();
+        dev.log(
+            "latitude: ${currentLocation.latitude} longitude: ${currentLocation.longitude}");
+        destinations = await getDestinationLocation(destination!);
+        location = destinations.first;
+        dev.log(
+            "latitude: ${location.latitude} longitude: ${location.longitude}");
+        launchMaps(currentLocation, location);
+        _ttsService.speak("starting navigation to $destination");
+      } else {
+        _ttsService.speak("please specify the destination");
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";
