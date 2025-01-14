@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
-import 'dart:math';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import 'package:luna/application/models/data/data_model.dart';
 import 'package:luna/application/models/image/image_model.dart';
 import 'package:luna/core/constants/constants.dart';
@@ -405,7 +406,9 @@ class HomeService {
       }),
     );
 
+    // ignore: deprecated_member_use
     if (await canLaunch(emailLaunchUri.toString())) {
+      // ignore: deprecated_member_use
       await launch(emailLaunchUri.toString());
     } else {
       throw 'Could not launch $emailLaunchUri';
@@ -424,6 +427,36 @@ class HomeService {
       return json.decode(response.body);
     } else {
       throw Exception('failed to load weather data');
+    }
+  }
+
+  // News Topic
+  Future<Map<String, dynamic>> getTopicNews(String query) async {
+    DateTime today = DateTime.now();
+    DateTime dateMinus15Days = today.subtract(const Duration(days: 30));
+    String formattedDate = DateFormat('yyyy-MM-dd').format(dateMinus15Days);
+    dev.log(formattedDate);
+    String url =
+        "https://newsapi.org/v2/everything?q=$query&from=$formattedDate&sortBy=popularity&apiKey=$newsApiKey";
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      dev.log(response.body);
+      return json.decode(response.body);
+    } else {
+      throw Exception('failed to get topic news');
+    }
+  }
+
+  // News Local
+  Future<Map<String, dynamic>> getLocalNews() async {
+    const String url =
+        "https://newsapi.org/v2/top-headlines?country=us&apiKey=$newsApiKey";
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      dev.log(response.body);
+      return json.decode(response.body);
+    } else {
+      throw Exception('failed to get local news');
     }
   }
 
@@ -810,7 +843,9 @@ class HomeService {
         _ttsService.speak(errorText);
         responseTextNotifier.value = errorText;
       }
-    } else if (intent == "email_query" && textData.contains("read")) {
+    }
+    // Read Message
+    else if (intent == "email_query" && textData.contains("read")) {
       List<SmsMessage> messages = await query.querySms(
         kinds: [SmsQueryKind.inbox, SmsQueryKind.sent],
       );
@@ -822,7 +857,9 @@ class HomeService {
         dev.log("${messages[i].address} ${messages[i].body}");
         await Future.delayed(Duration(seconds: messages[i].body!.length ~/ 10));
       }
-    } else if (intent == "calendar_set") {
+    }
+    // Reminder
+    else if (intent == "calendar_set") {
       DateTime now = DateTime.now();
       DateTime? reminderTime;
       String? time;
@@ -927,7 +964,9 @@ class HomeService {
       } else {
         _ttsService.speak("please specify when to set the remainder!");
       }
-    } else if (intent == "transport_query") {
+    }
+    // Navigation
+    else if (intent == "transport_query") {
       if (results.isNotEmpty) {
         String? destination;
         Position currentLocation;
@@ -955,7 +994,9 @@ class HomeService {
       } else {
         _ttsService.speak("please specify the destination");
       }
-    } else if (intent == "weather_query") {
+    }
+    // Weather Query
+    else if (intent == "weather_query") {
       Map<String, dynamic> weatherData;
       String location;
       String region;
@@ -1010,6 +1051,40 @@ class HomeService {
           responseTextNotifier.value = response;
           _ttsService.speak(response);
         }
+      }
+    }
+    // News Query
+    else if (intent == "news_query") {
+      String? topic;
+      String? textData;
+      Map<String, dynamic> response;
+
+      if (results.isNotEmpty) {
+        for (var model in results) {
+          topic = (topic ?? "") + model!.word!.trim();
+        }
+
+        if (topic != null) {
+          topic = topic.substring(1).replaceAll("▁", " ");
+          response = await getTopicNews(topic);
+          _ttsService.speak("Here are the latest news articles about $topic");
+          final articles = response['articles'] as List;
+          final article = articles[0];
+          _ttsService.flutterTts.setSpeechRate(0.5);
+          textData = "${article['title']} \n\n ${article['description']}";
+          responseTextNotifier.value = textData;
+          _ttsService.speak(textData);
+        }
+      } else {
+        response = await getLocalNews();
+        _ttsService.speak("Here are the latest news articles!");
+        final articles = response['articles'] as List;
+
+        final article = articles[Random().nextInt(response.length)];
+        _ttsService.flutterTts.setSpeechRate(0.5);
+        textData = "${article['title']} \n\n${article['description']}";
+        responseTextNotifier.value = textData;
+        _ttsService.speak(textData);
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";
