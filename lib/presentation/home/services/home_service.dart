@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:math';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:geocoding/geocoding.dart';
@@ -9,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:luna/application/models/data/data_model.dart';
 import 'package:luna/application/models/image/image_model.dart';
 import 'package:luna/core/constants/constants.dart';
+import 'package:luna/infrastructure/api_keys.dart';
 import 'package:luna/services/main_service.dart';
 import 'package:luna/presentation/home/services/Tts_Service.dart';
 import 'package:luna/services/settings_controller.dart';
@@ -406,6 +409,36 @@ class HomeService {
       await launch(emailLaunchUri.toString());
     } else {
       throw 'Could not launch $emailLaunchUri';
+    }
+  }
+
+  // Weather Info
+  Future<Map<String, dynamic>> getCurrentWeather() async {
+    Position location = await getCurrentLocation();
+    final String url =
+        'http://api.weatherapi.com/v1/current.json?key=$weatherApiKey&q=${location.latitude},${location.longitude}&aqi=no';
+
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      dev.log(response.body);
+      return json.decode(response.body);
+    } else {
+      throw Exception('failed to load weather data');
+    }
+  }
+
+  Future<Map<String, dynamic>> getDestinationWeather(String destination) async {
+    List<Location> locations = await getDestinationLocation(destination);
+    Location location = locations.first;
+    final String url =
+        'http://api.weatherapi.com/v1/current.json?key=$weatherApiKey&q=${location.latitude},${location.longitude}&aqi=no';
+
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      dev.log(response.body);
+      return json.decode(response.body);
+    } else {
+      throw Exception('failed to load weather data');
     }
   }
 
@@ -921,6 +954,62 @@ class HomeService {
         _ttsService.speak("starting navigation to $destination");
       } else {
         _ttsService.speak("please specify the destination");
+      }
+    } else if (intent == "weather_query") {
+      Map<String, dynamic> weatherData;
+      String location;
+      String region;
+      String condition;
+      double tempC;
+      double windMph;
+      int humidity;
+      double heatIndexC;
+      if (results.isNotEmpty) {
+        String? destination;
+        for (var model in results) {
+          if (model!.entity == "B-place_name" ||
+              model.entity == "I-place_name") {
+            destination = (destination ?? "") + (model.word!.trim());
+          }
+        }
+
+        if (destination != null) {
+          destination = destination.substring(1).replaceAll("▁", " ");
+
+          weatherData = await getDestinationWeather(destination);
+
+          location = weatherData['location']['name'];
+          region = weatherData['location']['region'];
+          condition = weatherData['current']['condition']['text'];
+          tempC = weatherData['current']['temp_c'];
+          windMph = weatherData['current']['wind_mph'];
+          humidity = weatherData['current']['humidity'];
+          heatIndexC = weatherData['current']['heatindex_c'];
+
+          String response =
+              "The current weather in $location, $region, is $condition with a temperature of $tempC°C. "
+              "The wind is blowing at $windMph mph, and the humidity level is at $humidity%. "
+              "The heat index feels like $heatIndexC°C.";
+          responseTextNotifier.value = response;
+          _ttsService.speak(response);
+        } else {
+          weatherData = await getCurrentWeather();
+
+          location = weatherData['location']['name'];
+          region = weatherData['location']['region'];
+          condition = weatherData['current']['condition']['text'];
+          tempC = weatherData['current']['temp_c'];
+          windMph = weatherData['current']['wind_mph'];
+          humidity = weatherData['current']['humidity'];
+          heatIndexC = weatherData['current']['heatindex_c'];
+
+          String response =
+              "The current weather in $location, $region, is $condition with a temperature of $tempC°C. "
+              "The wind is blowing at $windMph mph, and the humidity level is at $humidity%. "
+              "The heat index feels like $heatIndexC°C.";
+          responseTextNotifier.value = response;
+          _ttsService.speak(response);
+        }
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";
