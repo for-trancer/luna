@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:async';
 import 'dart:math';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:luna/application/models/data/data_model.dart';
 import 'package:luna/application/models/image/image_model.dart';
 import 'package:luna/core/constants/constants.dart';
@@ -24,6 +26,7 @@ class HomeService {
   final TtsService _ttsService = TtsService();
   final SettingsController _settingsController = SettingsController();
   final SmsQuery query = SmsQuery();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   int index = 0;
 
@@ -430,6 +433,12 @@ class HomeService {
     }
   }
 
+  // Stop Music
+  Future<void> stopMusic() async {
+    _ttsService.speak("stoping music");
+    await _audioPlayer.stop();
+  }
+
   // News Topic
   Future<Map<String, dynamic>> getTopicNews(String query) async {
     DateTime today = DateTime.now();
@@ -712,57 +721,6 @@ class HomeService {
         } else {
           _ttsService.speak("please specify the app name");
         }
-      }
-    }
-    // Play music
-    else if (intent == "play_music") {
-      String? artistName;
-      String? songName;
-      String? searchText;
-      if (results.isNotEmpty) {
-        for (var model in results) {
-          if (model!.entity == "B-song_name") {
-            songName = (songName ?? '') + (model.word!.trim());
-          } else if (model.entity == "B-artist_name" ||
-              model.entity == "I-artist_name") {
-            artistName = (artistName ?? '') + (model.word!.trim());
-          }
-        }
-        if (songName != null || artistName != null) {
-          if (songName != null) {
-            songName = songName.substring(1).replaceAll("▁", " ");
-          }
-          if (artistName != null) {
-            artistName = artistName.substring(1).replaceAll("▁", " ");
-          }
-          searchText = "$songName $artistName";
-          String songText;
-          if (songName != null && artistName != null) {
-            songText = "playing $songName by $artistName";
-            _ttsService.speak(songText);
-            responseTextNotifier.value = songText;
-          } else if (songName != null) {
-            songText = "playing $songName";
-            _ttsService.speak(songText);
-            responseTextNotifier.value = songText;
-          } else {
-            songText = "playing an song sung by $artistName";
-            _ttsService.speak(songText);
-            responseTextNotifier.value = songText;
-          }
-          _settingsController.playYoutube(searchText);
-        } else {
-          String songText =
-              "Got it! Please tell me the name of the song or the artist you'd like to listen to.";
-          _ttsService.speak(songText);
-          responseTextNotifier.value = songText;
-        }
-      } else {
-        String songText;
-        songText =
-            "Sure! Could you tell me the name of the song or artist you'd like me to play?";
-        _ttsService.speak(songText);
-        responseTextNotifier.value = songText;
       }
     }
     // Call
@@ -1085,6 +1043,89 @@ class HomeService {
         textData = "${article['title']} \n\n${article['description']}";
         responseTextNotifier.value = textData;
         _ttsService.speak(textData);
+      }
+    } // Stop Music
+    else if (intent == "play_music" && textData.contains("stop")) {
+      stopMusic();
+    }
+    // Play Local Music
+    else if (intent == "play_music") {
+      if (results.isEmpty) {
+        String? _filePath;
+        String? _fileName;
+
+        await _ttsService.speak(
+            "unable to pick audio automatically,please select the audio file to play");
+
+        FilePickerResult? result = await FilePicker.platform.pickFiles(
+          type: FileType.audio,
+        );
+
+        if (result != null && result.files.isNotEmpty) {
+          _filePath = result.files.first.path;
+          _fileName = result.files.first.name;
+        } else {
+          _ttsService.speak("File Not Found");
+        }
+
+        if (_filePath != null) {
+          try {
+            await _audioPlayer.setFilePath(_filePath);
+            _audioPlayer.play();
+          } catch (e) {
+            _ttsService.speak("Error Playing Audio");
+          }
+        }
+      } else {
+        // Play Youtube Music
+        String? artistName;
+        String? songName;
+        String? searchText;
+        if (results.isNotEmpty) {
+          for (var model in results) {
+            if (model!.entity == "B-song_name") {
+              songName = (songName ?? '') + (model.word!.trim());
+            } else if (model.entity == "B-artist_name" ||
+                model.entity == "I-artist_name") {
+              artistName = (artistName ?? '') + (model.word!.trim());
+            }
+          }
+          if (songName != null || artistName != null) {
+            if (songName != null) {
+              songName = songName.substring(1).replaceAll("▁", " ");
+            }
+            if (artistName != null) {
+              artistName = artistName.substring(1).replaceAll("▁", " ");
+            }
+            searchText = "$songName $artistName";
+            String songText;
+            if (songName != null && artistName != null) {
+              songText = "playing $songName by $artistName";
+              _ttsService.speak(songText);
+              responseTextNotifier.value = songText;
+            } else if (songName != null) {
+              songText = "playing $songName";
+              _ttsService.speak(songText);
+              responseTextNotifier.value = songText;
+            } else {
+              songText = "playing an song sung by $artistName";
+              _ttsService.speak(songText);
+              responseTextNotifier.value = songText;
+            }
+            _settingsController.playYoutube(searchText);
+          } else {
+            String songText =
+                "Got it! Please tell me the name of the song or the artist you'd like to listen to.";
+            _ttsService.speak(songText);
+            responseTextNotifier.value = songText;
+          }
+        } else {
+          String songText;
+          songText =
+              "Sure! Could you tell me the name of the song or artist you'd like me to play?";
+          _ttsService.speak(songText);
+          responseTextNotifier.value = songText;
+        }
       }
     } else {
       responseTextNotifier.value = "please connect to the internet";

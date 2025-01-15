@@ -30,6 +30,7 @@ environment:
 dependencies:
   cupertino_icons: ^1.0.6
   dio: ^5.7.0
+  file_picker: ^8.1.7
   firebase_auth: ^5.3.4
   firebase_core: ^3.8.1
   flutter:
@@ -43,6 +44,7 @@ dependencies:
   http: ^1.2.2
   intl: ^0.20.1
   json_annotation: ^4.9.0
+  just_audio: ^0.9.43
   open_file: ^3.5.10
   path_provider: ^2.1.5
   permission_handler: ^11.3.1
