@@ -116,6 +116,52 @@ class HomeService {
     'play store': 'com.android.vending', // Google Play Store
   };
 
+  // Nearby
+  // category_mapping.dart
+
+  Map<String, String> categoryMapping = {
+    "hotel": "accommodation.hotel",
+    "hut": "accommodation.hut",
+    "apartment": "accommodation.apartment",
+    "chalet": "accommodation.chalet",
+    "guest house": "accommodation.guest_house",
+    "hostel": "accommodation.hostel",
+    "motel": "accommodation.motel",
+    "restaurant": "catering.restaurant",
+    "cafe": "catering.cafe",
+    "bar": "catering.bar",
+    "supermarket": "commercial.supermarket",
+    "market": "commercial.marketplace",
+    "shopping mall": "commercial.shopping_mall",
+    "department store": "commercial.department_store",
+    "gym": "sport.fitness.fitness_centre",
+    "park": "leisure.park",
+    "school": "education.school",
+    "university": "education.university",
+    "clinic": "healthcare.clinic_or_praxis",
+    "hospital": "healthcare.hospital",
+    "airport": "airport",
+    "train station": "public_transport.train",
+    "bus station": "public_transport.bus",
+    "pet shop": "pet.shop",
+    "veterinary": "pet.veterinary",
+    "theatre": "entertainment.culture.theatre",
+    "museum": "entertainment.museum",
+    "zoo": "entertainment.zoo",
+    "beach": "beach",
+    "camping": "camping.camp_site",
+    "car rental": "rental.car",
+    "bicycle rental": "rental.bicycle",
+    "gas station": "commercial.gas",
+    "pharmacy": "commercial.health_and_beauty.pharmacy",
+    "bank": "service.financial.bank",
+    "atm": "service.financial.atm",
+    "police station": "service.police",
+    "fire station": "service.fire",
+    "community center": "activity.community_center",
+    "sport club": "activity.sport_club",
+  };
+
   // Initialise speech and tts
   Future<void> initSpeechTts() async {
     _ttsService.initSpeech();
@@ -503,6 +549,24 @@ class HomeService {
       return json.decode(response.body);
     } else {
       throw Exception('failed to load weather data');
+    }
+  }
+
+  // Nearby
+  Future<Map<String, dynamic>> getNearbyDetails(String category) async {
+    Position location = await getCurrentLocation();
+
+    final String url =
+        'https://api.geoapify.com/v2/places?categories=$category&filter=circle:${location.longitude},${location.latitude},5000&bias=proximity:${location.longitude},${location.latitude}&limit=5&apiKey=$geopifyApiKey';
+
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      dev.log(response.body);
+      return json.decode(response.body);
+    } else {
+      _ttsService.speak("unable to fetch the details");
+      throw Exception('failed to get the data from geopify server3');
     }
   }
 
@@ -1157,6 +1221,52 @@ class HomeService {
     } else if (intent == "iot_hue_lightoff") {
       _ttsService.speak("turning off flashlight");
       toggleFlashLight(false);
+    }
+    // Nearby
+    else if (intent == "recommendation_locations" ||
+        intent == "recommendation_events" ||
+        intent == "takeaway_query") {
+      String? data;
+      String category;
+      Map<String, dynamic> response;
+
+      if (results.isNotEmpty) {
+        for (var model in results) {
+          if (model!.entity == "B-business_name" ||
+              model.entity == "I-business_name" ||
+              model.entity == "B-business_type" ||
+              model.entity == "I-business_type") {
+            data = (data ?? "") + model.word!.trim();
+          }
+        }
+
+        if (data != null) {
+          data = data.substring(1).replaceAll("▁", " ").toLowerCase();
+        }
+        dev.log(data!);
+
+        category = categoryMapping[data] ?? "";
+        response = await getNearbyDetails(category);
+        String name;
+        String street;
+        String textData = "Here is the list of available $data:\n\n";
+        _ttsService.speak(textData);
+
+        for (var model in response['features']) {
+          name = model['properties']['name'] ?? "Unknown Name";
+          street = model['properties']['street'] ?? "Unknown Street";
+
+          if (name != "Unknown Name") {
+            textData += "$name at $street\n";
+          }
+        }
+        if (textData.trim().isNotEmpty) {
+          responseTextNotifier.value = textData;
+          _ttsService.speak(textData);
+        }
+      } else {
+        _ttsService.speak("please specify the location,place,or name!");
+      }
     } else {
       responseTextNotifier.value = "please connect to the internet";
       responseTextNotifier.notifyListeners();
