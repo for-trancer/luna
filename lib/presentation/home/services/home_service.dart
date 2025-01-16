@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:async';
 import 'dart:math';
+import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
@@ -430,6 +431,27 @@ class HomeService {
       return json.decode(response.body);
     } else {
       throw Exception('failed to load weather data');
+    }
+  }
+
+  // Flashlight
+  Future<void> toggleFlashLight(bool enable) async {
+    final cameras = await availableCameras();
+
+    if (cameras.isNotEmpty) {
+      final cameraController =
+          CameraController(cameras.first, ResolutionPreset.high);
+      await cameraController.initialize();
+
+      if (enable) {
+        _ttsService.speak("turning on flashlight");
+        await cameraController.setFlashMode(FlashMode.torch);
+      } else {
+        _ttsService.speak("turning off flashlight");
+        await cameraController.setFlashMode(FlashMode.off);
+      }
+    } else {
+      _ttsService.speak("no flashlight is available for this device");
     }
   }
 
@@ -1127,6 +1149,14 @@ class HomeService {
           responseTextNotifier.value = songText;
         }
       }
+    }
+    // Flashlight
+    else if (intent == "iot_hue_lighton") {
+      _ttsService.speak("turning on flashlight");
+      toggleFlashLight(true);
+    } else if (intent == "iot_hue_lightoff") {
+      _ttsService.speak("turning off flashlight");
+      toggleFlashLight(false);
     } else {
       responseTextNotifier.value = "please connect to the internet";
       responseTextNotifier.notifyListeners();

@@ -28,6 +28,8 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  camera: 0.11.0
+  camera_android_camerax: 0.6.7
   cupertino_icons: ^1.0.6
   dio: ^5.7.0
   file_picker: ^8.1.7
@@ -38,9 +40,9 @@ dependencies:
   flutter_alarm_clock: ^0.1.1
   flutter_contacts: ^1.1.9+2
   flutter_sms_inbox: ^1.0.3
-  flutter_tts: ^3.8.0
-  geocoding: ^2.0.0
-  geolocator: ^9.0.0
+  flutter_tts: ^4.2.1
+  geocoding: ^3.0.0
+  geolocator: ^13.0.2
   http: ^1.2.2
   intl: ^0.20.1
   json_annotation: ^4.9.0
@@ -48,16 +50,25 @@ dependencies:
   open_file: ^3.5.10
   path_provider: ^2.1.5
   permission_handler: ^11.3.1
+  shared_preferences: ^2.3.3
   speech_to_text: ^7.0.0
   url_launcher: ^6.3.1
 
 dev_dependencies:
   build_runner: ^2.4.11
+  flutter_launcher_icons: ^0.14.2
   flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter
   json_serializable: ^6.8.0
   smooth_page_indicator: ^1.2.0+3
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/logo.png"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/logo/luna-logo-black.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -73,7 +84,6 @@ flutter:
   assets:
     - assets/logo/
     - assets/animated/introduction/
-    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

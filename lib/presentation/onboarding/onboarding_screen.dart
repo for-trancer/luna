@@ -5,6 +5,7 @@ import 'package:luna/presentation/onboarding/widgets/onboarding_container.dart';
 import 'package:luna/core/colors/colors.dart';
 import 'package:luna/presentation/onboarding/widgets/onboarding_appbar.dart';
 import 'package:luna/presentation/onboarding/widgets/onboarding_items.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -17,6 +18,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = OnboardingItems();
   final _pageController = PageController();
   bool isLastPage = false;
+
+  Future<void> setLogValue() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool('isLogged', true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           scrollDirection: Axis.horizontal,
           itemCount: _controller.items.length,
           itemBuilder: (BuildContext content, index) {
+            setLogValue();
             return Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
