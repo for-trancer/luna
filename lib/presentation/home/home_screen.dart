@@ -136,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(
-                          width: size - 200,
+                          width: size > 200 ? size - 200 : 0,
                           child: TextField(
                             controller: _inputController,
                             onChanged: (value) {

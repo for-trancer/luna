@@ -607,40 +607,56 @@ class HomeService {
     }
     // Toggle On
     else if (intent == 'iot_wemo_on') {
-      dev.log(results[0]!.word.toString());
-      final String word = results[0]!.word!.toLowerCase();
-      // Wifi On
-      if (textData.contains("hotspot")) {
-        _ttsService.speak("opening hotspot settings");
-        _settingsController.toggleHotspot();
-      } else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
-        _ttsService.speak("Turning on Wifi");
-        _settingsController.toggleWifi(true);
-      }
-      // BlueTooth On
-      else if (word == '▁bluetooth') {
-        _ttsService.speak("Turning on Bluetooth");
-        _settingsController.toggleBluetooth(true);
+      if (results.isNotEmpty) {
+        dev.log(results[0]!.word.toString());
+        final String word = results[0]!.word!.toLowerCase();
+        // Wifi On
+        if (textData.contains("hotspot")) {
+          _ttsService.speak("opening hotspot settings");
+          _settingsController.toggleHotspot();
+        } else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
+          _ttsService.speak("Please turn on wifi");
+          _settingsController.toggleWifi();
+        }
+        // BlueTooth On
+        else if (word == '▁bluetooth') {
+          _ttsService.speak("Turning on Bluetooth");
+          _settingsController.toggleBluetooth(true);
+        }
+      } else if (textData.contains("mobile data")) {
+        _ttsService.speak("Opening mobile data settings");
+        _settingsController.openMobileDataSettings();
+      } else {
+        _ttsService.speak("Sorry, I didn't quite catch that");
       }
     }
     // Toggle Off
     else if (intent == 'iot_wemo_off') {
-      dev.log(results[0]!.word.toString());
-      final String word = results[0]!.word!.toLowerCase();
-      // BlueTooth Off
-      if (word == '▁bluetooth') {
-        _ttsService.speak("Turning off Bluetooth");
-        _settingsController.toggleBluetooth(false);
-      }
-      // Wifi Off
-      if (word == '▁wifi' || textData.contains("Wi-Fi")) {
-        _ttsService.speak("Turning off wifi");
-        _settingsController.toggleWifi(false);
-      }
-      // Airplane Off
-      if (textData.contains("airplane")) {
-        _ttsService.speak("Turning off airplane mode");
-        _settingsController.toggleAirplaneMode(false);
+      if (results.isNotEmpty) {
+        dev.log(results[0]!.word.toString());
+        final String word = results[0]!.word!.toLowerCase();
+        // Hotspot Off
+        if (textData.contains("hotspot")) {
+          _ttsService.speak("opening hotspot settings");
+          _settingsController.toggleHotspot();
+        }
+        // BlueTooth Off
+        else if (word == '▁bluetooth') {
+          _ttsService.speak("Turning off Bluetooth");
+          _settingsController.toggleBluetooth(false);
+        }
+        // Wifi Off
+        else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
+          _ttsService.speak("Please turn off wifi");
+          _settingsController.toggleWifi();
+        } else if (textData.contains("mobile data")) {
+          _ttsService.speak("Opening mobile data settings");
+          _settingsController.openMobileDataSettings();
+        } else {
+          _ttsService.speak("Sorry, I didn't quite catch that");
+        }
+      } else {
+        _ttsService.speak("Sorry, I didn't quite catch that");
       }
     }
     // Audio Mute
@@ -725,7 +741,7 @@ class HomeService {
         }
 
         dev.log(alarmTime.toString());
-        // Check if alarmTime is not null
+
         if (alarmTime != null) {
           _settingsController.toggleAlarm(alarmTime.year, alarmTime.month,
               alarmTime.day, alarmTime.hour, alarmTime.minute);

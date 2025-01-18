@@ -1,8 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:ffi';
-
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 class SettingsController {
@@ -11,9 +8,9 @@ class SettingsController {
   // Methods
 
   // Wifi
-  Future<void> toggleWifi(bool enable) async {
+  Future<void> toggleWifi() async {
     try {
-      await platform.invokeMethod('toggleWifi', {'enable': enable});
+      await platform.invokeMethod('toggleWiFi');
     } on PlatformException catch (e) {
       log("failed to toggle wifi: ${e.message}");
     }
@@ -23,15 +20,6 @@ class SettingsController {
   Future<void> toggleBluetooth(bool enable) async {
     try {
       await platform.invokeMethod('toggleBluetooth', {'enable': enable});
-    } on PlatformException catch (e) {
-      log(e.message!);
-    }
-  }
-
-  // AirplaneMode
-  Future<void> toggleAirplaneMode(bool enable) async {
-    try {
-      await platform.invokeMethod('toggleAirplaneMode', {'enable': enable});
     } on PlatformException catch (e) {
       log(e.message!);
     }
@@ -128,6 +116,14 @@ class SettingsController {
         'minute': minute,
         'title': title,
       });
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
+
+  Future<void> openMobileDataSettings() async {
+    try {
+      await platform.invokeMethod('openMobileDataSettings');
     } on PlatformException catch (e) {
       log(e.message!);
     }

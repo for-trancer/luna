@@ -38,20 +38,13 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         when (call.method) {
 
             "toggleWiFi" -> {
-                val enable = call.argument<Boolean>("enable") ?: false
-                toggleWiFi(enable)
+                toggleWiFi()
                 result.success(null)
             }
 
             "toggleBluetooth" -> {
                 val enable = call.argument<Boolean>("enable") ?: false
                 toggleBluetooth(enable)
-                result.success(null)
-            }
-
-            "toggleAirplaneMode" -> {
-                val enable = call.argument<Boolean>("enable") ?: false
-                toggleAirplaneMode(enable)
                 result.success(null)
             }
 
@@ -119,16 +112,21 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
                 result.success(null)
             }
 
+            "openMobileDataSettings" -> {
+                openMobileDataSettings()
+                result.success(null)
+            }
+
             else -> result.notImplemented()
         }
     }
 
     // Wifi
-    private fun toggleWiFi(enable: Boolean) {
-        val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        if (enable != wifiManager.isWifiEnabled) {
-            wifiManager.isWifiEnabled = enable
-        }
+    private fun toggleWiFi() {
+        val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        Log.d("WiFiToggle", "Opened WiFi settings for user to manually toggle WiFi.")
     }
 
     // Bluetooth
@@ -153,14 +151,6 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         } else {
             Log.d("Error","Bluetooth is not supported on this device.")
         }
-    }
-
-    // Airplane
-    private fun toggleAirplaneMode(enable: Boolean) {
-        Settings.Global.putInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, if (enable) 1 else 0)
-        val intent = Intent(Intent.ACTION_AIRPLANE_MODE_CHANGED)
-        intent.putExtra("state", enable)
-        context.sendBroadcast(intent)
     }
 
     // Audio Mute
@@ -283,17 +273,21 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
 
     // Youtube
     private fun playYoutube(searchText: String) {
-        // Construct the YouTube search URL
         val searchUrl = "https://www.youtube.com/results?search_query=${Uri.encode(searchText)}"
         
-        // Create an intent to open the URL
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl))
         
-        // Add the FLAG_ACTIVITY_NEW_TASK flag
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         
-        // Start the activity
         context.startActivity(intent)
+    }
+
+    // Mobile Data
+    fun openMobileDataSettings() {
+        val intent = Intent(Settings.ACTION_DATA_ROAMING_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        Log.d("Settings", "Opened mobile data settings for user to manually toggle mobile data.")
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
