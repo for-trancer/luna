@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_interpolation_to_compose_strings, deprecated_member_use
+
 import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:async';
@@ -346,7 +348,9 @@ class HomeService {
       queryParameters: {'body': message},
     );
     requestSmsPermission();
+    // ignore: deprecated_member_use
     if (await canLaunch(smsUri.toString())) {
+      // ignore: deprecated_member_use
       await launch(smsUri.toString());
     } else {
       throw 'Could not launch $smsUri';
@@ -883,13 +887,12 @@ class HomeService {
           }
         }
 
-        email = email!.substring(1).replaceAll("▁", "") + "@gmail.com";
+        email = "${email!.substring(1).replaceAll("▁", "")}@gmail.com";
         email = email.toLowerCase();
 
         String? dataSubject = "Quick Remainder";
         String? dataMsg = await _service.fetchInformation(
-            "Extract only the message body content from the following instruction. Don't say anything else, only the body content: " +
-                textData);
+            "Extract only the message body content from the following instruction. Don't say anything else, only the body content: $textData");
         subject = dataSubject;
         msg = dataMsg;
         dev.log("Fetched subject: $subject");
@@ -1011,7 +1014,7 @@ class HomeService {
 
           if (reminderTime != null) {
             _settingsController.setReminder(
-                reminderTime!.year,
+                reminderTime.year,
                 reminderTime.month,
                 reminderTime.day,
                 reminderTime.hour,
@@ -1154,7 +1157,6 @@ class HomeService {
     else if (intent == "play_music") {
       if (results.isEmpty) {
         String? _filePath;
-        String? _fileName;
 
         await _ttsService.speak(
             "unable to pick audio automatically,please select the audio file to play");
@@ -1165,7 +1167,6 @@ class HomeService {
 
         if (result != null && result.files.isNotEmpty) {
           _filePath = result.files.first.path;
-          _fileName = result.files.first.name;
         } else {
           _ttsService.speak("File Not Found");
         }
@@ -1199,7 +1200,13 @@ class HomeService {
             if (artistName != null) {
               artistName = artistName.substring(1).replaceAll("▁", " ");
             }
-            searchText = "$songName $artistName";
+            if (songName == null) {
+              searchText = artistName;
+            } else if (artistName == null) {
+              searchText = songName;
+            } else {
+              searchText = "$songName $artistName";
+            }
             String songText;
             if (songName != null && artistName != null) {
               songText = "playing $songName by $artistName";
@@ -1214,7 +1221,7 @@ class HomeService {
               _ttsService.speak(songText);
               responseTextNotifier.value = songText;
             }
-            _settingsController.playYoutube(searchText);
+            _settingsController.playYoutube(searchText!);
           } else {
             String songText =
                 "Got it! Please tell me the name of the song or the artist you'd like to listen to.";
