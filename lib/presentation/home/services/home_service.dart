@@ -836,7 +836,8 @@ class HomeService {
         for (var model in results) {
           if (model!.entity == "B-person" ||
               model.entity == "I-person" ||
-              model.entity == "B-relation") {
+              model.entity == "B-relation" ||
+              model.entity == "B-business_name") {
             contactName = (contactName ?? '') + (model.word!.trim());
           }
         }
@@ -863,7 +864,9 @@ class HomeService {
 
         contactName = contactName!.substring(1).replaceAll("▁", " ");
 
-        sendTextMessage(contactName, textData);
+        String? message = await _service.fetchInformation(
+            "Extract only the message content from the following instruction from input prompt. Don't say anything else, only the message content: $textData");
+        sendTextMessage(contactName, message!);
       } else {
         errorText = "please tell me who to text?";
       }
@@ -882,17 +885,23 @@ class HomeService {
 
       if (results.isNotEmpty) {
         for (var model in results) {
-          if (model!.entity == "B-person" || model.entity == "I-person") {
+          if (model!.entity == "B-person" ||
+              model.entity == "I-person" ||
+              model.entity == "B-email_address" ||
+              model.entity == "I-email_address") {
             email = (email ?? "") + model.word!.trim().toString();
           }
         }
 
-        email = "${email!.substring(1).replaceAll("▁", "")}@gmail.com";
+        email = email!.substring(1).replaceAll("▁", "");
         email = email.toLowerCase();
+        dev.log("email : $email");
 
-        String? dataSubject = "Quick Remainder";
+        String? dataSubject = await _service.fetchInformation(
+            "Extract an title for an gmail from this dont say any other things $textData");
+        Future.delayed(const Duration(seconds: 4));
         String? dataMsg = await _service.fetchInformation(
-            "Extract only the message body content from the following instruction. Don't say anything else, only the body content: $textData");
+            "Extract only the message body content from the following instruction. Don't say anything else, only the message body content: $textData");
         subject = dataSubject;
         msg = dataMsg;
         dev.log("Fetched subject: $subject");
@@ -900,7 +909,7 @@ class HomeService {
 
         _ttsService.speak("Sending mail to $email");
         responseTextNotifier.value = "Sending mail to $email";
-        sendEmail(email, subject, msg!);
+        sendEmail(email, subject!, msg!);
       } else {
         String errorText = "Please specify who to send the email to.";
         _ttsService.speak(errorText);
@@ -1291,11 +1300,6 @@ class HomeService {
         _ttsService.speak("please specify the location,place,or name!");
       }
     } else {
-      responseTextNotifier.value = "please connect to the internet";
-      responseTextNotifier.notifyListeners();
-      _ttsService.speak("please connect to the internet");
-    }
-    /*else {
       dev.log("chatgpt");
       String? fetchedResponse = await _service.fetchInformation(textData);
 
@@ -1304,12 +1308,10 @@ class HomeService {
         responseTextNotifier.notifyListeners();
         _ttsService.speak(responseTextNotifier.value);
       } else {
-        // Handle the case where the response is null
         dev.log("Failed to fetch information.");
-        responseTextNotifier.value =
-            "Sorry, I couldn't fetch the information."; // Default message
+        responseTextNotifier.value = "Sorry, I couldn't fetch the information.";
         _ttsService.speak(responseTextNotifier.value);
       }
-    }*/
+    }
   }
 }
