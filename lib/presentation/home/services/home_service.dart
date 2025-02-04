@@ -38,11 +38,14 @@ class HomeService {
   ValueNotifier<String> imageDataNotifier = ValueNotifier<String>("");
   ValueNotifier<bool> isImageNotifier = ValueNotifier<bool>(false);
   ValueNotifier<bool> isTextMessageNotifier = ValueNotifier<bool>(false);
+
   bool isListening = false;
   bool isTyping = false;
   String recognizedText = '';
   String imageUrl = '';
   bool isText = false;
+
+  String outputText = "";
 
   // For Setting Alarm
   Map<String, int> weekdayMap = {
@@ -605,8 +608,9 @@ class HomeService {
     // Intents
     if (textData.contains("image") || textData.contains("generate")) {
       isImageNotifier.value = true;
-      _ttsService.speak(
-          "Sure! I'm working on creating your image now. This might take a moment—hang tight!");
+      outputText =
+          "Sure! I'm working on creating your image now. This might take a moment—hang tight!";
+      _ttsService.speak(outputText);
       await generateImage(textData);
     }
     // Toggle On
@@ -616,22 +620,32 @@ class HomeService {
         final String word = results[0]!.word!.toLowerCase();
         // Wifi On
         if (textData.contains("hotspot")) {
-          _ttsService.speak("opening hotspot settings");
+          outputText = "Opening Hotspot Settings";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.toggleHotspot();
         } else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
-          _ttsService.speak("Please turn on wifi");
+          outputText = "Please Turn On Wifi";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.toggleWifi();
         }
         // BlueTooth On
         else if (word == '▁bluetooth') {
-          _ttsService.speak("Turning on Bluetooth");
+          outputText = "Turning on Bluetooth";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.toggleBluetooth(true);
         }
       } else if (textData.contains("mobile data")) {
-        _ttsService.speak("Opening mobile data settings");
+        outputText = "Opening mobile data settings";
+        _ttsService.speak(outputText);
+        responseTextNotifier.value = outputText;
         _settingsController.openMobileDataSettings();
       } else {
-        _ttsService.speak("Sorry, I didn't quite catch that");
+        outputText = "Sorry, I didn't quite catch that";
+        _ttsService.speak(outputText);
+        responseTextNotifier.value = outputText;
       }
     }
     // Toggle Off
@@ -641,37 +655,51 @@ class HomeService {
         final String word = results[0]!.word!.toLowerCase();
         // Hotspot Off
         if (textData.contains("hotspot")) {
-          _ttsService.speak("opening hotspot settings");
+          outputText = "opening hotspot settings";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.toggleHotspot();
         }
         // BlueTooth Off
         else if (word == '▁bluetooth') {
-          _ttsService.speak("Turning off Bluetooth");
+          outputText = "Turning off Bluetooth";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.toggleBluetooth(false);
         }
         // Wifi Off
         else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
-          _ttsService.speak("Please turn off wifi");
+          outputText = "Please turn off wifi";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.toggleWifi();
         } else if (textData.contains("mobile data")) {
-          _ttsService.speak("Opening mobile data settings");
+          outputText = "Opening mobile data settings";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.openMobileDataSettings();
         } else {
-          _ttsService.speak("Sorry, I didn't quite catch that");
+          outputText = "Sorry, I didn't quite catch that";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
         }
       } else {
-        _ttsService.speak("Sorry, I didn't quite catch that");
+        outputText = "Sorry, I didn't quite catch that";
+        _ttsService.speak(outputText);
+        responseTextNotifier.value = outputText;
       }
     }
     // Audio Mute
     else if (intent == 'audio_volume_mute') {
-      responseTextNotifier.value = "Muting audio";
+      outputText = "Muting audio";
+      responseTextNotifier.value = outputText;
       _settingsController.toggleAudioMute(true);
     }
     // Audio Full
     else if (intent == 'audio_volume_up') {
       _settingsController.toggleAudioFull();
-      _ttsService.speak("Volume set to full");
+      outputText = "Volume set to full";
+      _ttsService.speak(outputText);
     }
     // Audio Volume Down
     else if (intent == 'audio_volume_down') {
@@ -751,22 +779,19 @@ class HomeService {
               alarmTime.day, alarmTime.hour, alarmTime.minute);
           String alarmText;
           if (date != null && period != null) {
-            alarmText = "alarm set for $time $period $date";
-            _ttsService.speak(alarmText);
+            outputText = "Alarm set for $time $period $date";
           } else if (date != null) {
-            alarmText = "alarm set for $time $date";
-            _ttsService.speak(alarmText);
+            outputText = "Alarm set for $time $date";
           } else {
-            alarmText = "alarm set for $time $period";
-            _ttsService.speak(alarmText);
+            outputText = "Alarm set for $time";
           }
-          responseTextNotifier.value = alarmText;
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
         }
       } else {
-        _ttsService
-            .speak("Please provide information about when to set the alarm");
-        responseTextNotifier.value =
-            "Please provide information about when to set the alarm";
+        outputText = "Please provide information about when to set the alarm";
+        _ttsService.speak(outputText);
+        responseTextNotifier.value = outputText;
       }
     }
     // Open App
@@ -782,50 +807,77 @@ class HomeService {
         dev.log(appName);
         packageName = getPackageName(appName);
         if (packageName.isNotEmpty) {
-          _ttsService.speak("opening $appName");
+          outputText = "Opening $appName";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
           _settingsController.openApp(packageName);
         } else {
-          _ttsService.speak("App not found");
+          outputText = "App not found";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
         }
       } else {
         if (textData.contains("settings") || textData.contains("setting")) {
           packageName = getPackageName("settings");
-          _ttsService.speak("opening settings");
+          outputText = "Opening Settings";
+
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else if (textData.contains("email") || textData.contains("gmail")) {
           packageName = getPackageName("gmail");
-          _ttsService.speak("opening gmail");
+
+          outputText = "Opening Gmail";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else if (textData.contains("message") ||
             textData.contains("messages")) {
           packageName = getPackageName("messsages");
-          _ttsService.speak("opening messages");
+
+          outputText = "Opening Messages";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else if (textData.contains("contact") ||
             textData.contains("contacts")) {
           packageName = getPackageName("contacts");
-          _ttsService.speak("opening contacts");
+          outputText = "Opening Contacts";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else if (textData.contains("whatsapp")) {
           packageName = getPackageName("whatsapp");
-          _ttsService.speak("opening whatsapp");
+
+          outputText = "Opening Whatsapp";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else if (textData.contains("discord")) {
           packageName = getPackageName("discord");
-          _ttsService.speak("opening discord");
+
+          outputText = "Opening Discord";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else if (textData.contains("google photos") ||
             textData.contains("photos")) {
           packageName = getPackageName("google photos");
-          _ttsService.speak("opening google photos");
+          outputText = "opening google photos";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else if (textData.contains("google map") ||
             textData.contains("map")) {
           packageName = getPackageName("maps");
-          _ttsService.speak("opening google maps");
+          outputText = "Opening Google Maps";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
           _settingsController.openApp(packageName);
         } else {
-          _ttsService.speak("please specify the app name");
+          outputText = "Please Specify The App Name";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
         }
       }
     }
@@ -844,7 +896,7 @@ class HomeService {
         contactName = contactName!.substring(1).replaceAll("▁", " ");
         getContactDetails(contactName);
       } else {
-        String errorText = "please tell me who to call?";
+        String errorText = "Please tell me who to call?";
         _ttsService.speak(errorText);
         responseTextNotifier.value = errorText;
       }
@@ -868,13 +920,15 @@ class HomeService {
             "Extract only the message content from the following instruction from input prompt. Don't say anything else, only the message content: $textData");
         sendTextMessage(contactName, message!);
       } else {
-        errorText = "please tell me who to text?";
+        errorText = "Please tell me who to text?";
+        responseTextNotifier.value = errorText;
       }
     }
     // Remove Alarm
     else if (intent == "alarm_remove") {
-      _ttsService.speak("alarm is turned off");
-      dev.log("alarm is turned off");
+      outputText = "Alarm is turned off";
+      _ttsService.speak(outputText);
+      responseTextNotifier.value = outputText;
       _settingsController.toggleAlarmOff();
     }
     // Send Mail
@@ -907,8 +961,9 @@ class HomeService {
         dev.log("Fetched subject: $subject");
         dev.log("Fetched message: $msg");
 
-        _ttsService.speak("Sending mail to $email");
-        responseTextNotifier.value = "Sending mail to $email";
+        outputText = "Sending mail to $email";
+        _ttsService.speak(outputText);
+        responseTextNotifier.value = outputText;
         sendEmail(email, subject!, msg!);
       } else {
         String errorText = "Please specify who to send the email to.";
@@ -918,16 +973,29 @@ class HomeService {
     }
     // Read Message
     else if (intent == "email_query" && textData.contains("read")) {
+      outputText = "Loading messages hang-tight!";
+      _ttsService.speak(outputText);
       List<SmsMessage> messages = await query.querySms(
         kinds: [SmsQueryKind.inbox, SmsQueryKind.sent],
       );
 
       messages.sort((a, b) => b.date!.compareTo(a.date!));
-      for (int i = 0; i < messages.length && i < 3; i++) {
+
+      outputText = "";
+      responseTextNotifier.value = outputText;
+
+      for (int i = 0; i < 3; i++) {
+        String? content = await _service.fetchInformation(
+            "Extract the idea or key message from the following SMS text start uniquely and role play as voice assistant remove any mentioning of phonenumbers and ac numbers:" +
+                messages[i].body!);
+        outputText =
+            "\n" + messages[i].address! + " : \n\n${messages[i].body}\n";
+        responseTextNotifier.value = outputText;
+        responseTextNotifier.notifyListeners();
         _ttsService.speak(
-            "message from ${messages[i].address!} saying ${messages[i].body!}");
-        dev.log("${messages[i].address} ${messages[i].body}");
-        await Future.delayed(Duration(seconds: messages[i].body!.length ~/ 10));
+            "message from ${messages[i].address!} saying that" + content!);
+        dev.log("${messages[i].address} ${messages[i].body} $content");
+        await Future.delayed(Duration(seconds: content.length ~/ 8));
       }
     }
     // Reminder

@@ -5,6 +5,7 @@ import 'package:luna/presentation/onboarding/widgets/onboarding_container.dart';
 import 'package:luna/core/colors/colors.dart';
 import 'package:luna/presentation/onboarding/widgets/onboarding_appbar.dart';
 import 'package:luna/presentation/onboarding/widgets/onboarding_items.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -24,12 +25,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     prefs.setBool('isLogged', true);
   }
 
+  void requestPermissions() async {
+    await [
+      Permission.camera,
+      Permission.microphone,
+      Permission.location,
+      Permission.storage,
+      Permission.contacts,
+      Permission.phone,
+      Permission.sms,
+      Permission.bluetooth,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+      Permission.requestInstallPackages,
+    ].request();
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: primaryColor,
       statusBarIconBrightness: Brightness.dark,
     ));
+
+    requestPermissions();
 
     return Scaffold(
       appBar: const PreferredSize(
