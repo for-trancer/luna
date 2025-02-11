@@ -1367,6 +1367,21 @@ class HomeService {
       } else {
         _ttsService.speak("please specify the location,place,or name!");
       }
+    } else if (intent == "iot_hue_lightup" && textData.contains("maximum")) {
+      String outputText = "Screen brightness set to maximum";
+      _ttsService.speak(outputText);
+      responseTextNotifier.value = outputText;
+      _settingsController.setMaxBrightness();
+    } else if (intent == "iot_hue_lightup") {
+      String outputText = "Screen brightness increased";
+      _ttsService.speak(outputText);
+      responseTextNotifier.value = outputText;
+      _settingsController.increaseBrightness();
+    } else if (intent == "iot_hue_lightdim") {
+      String outputText = "Screen brightness decreased";
+      _ttsService.speak(outputText);
+      responseTextNotifier.value = outputText;
+      _settingsController.decreaseBrightness();
     } else {
       dev.log("chatgpt");
       String? fetchedResponse = await _service.fetchInformation(textData);

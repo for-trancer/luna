@@ -121,9 +121,37 @@ class SettingsController {
     }
   }
 
+  // Mobile Data
   Future<void> openMobileDataSettings() async {
     try {
       await platform.invokeMethod('openMobileDataSettings');
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
+
+  // Increase Brightness
+  Future<void> increaseBrightness() async {
+    try {
+      await platform.invokeMethod('increaseBrightness');
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
+
+  // Increase Brightness
+  Future<void> decreaseBrightness() async {
+    try {
+      await platform.invokeMethod('decreaseBrightness');
+    } on PlatformException catch (e) {
+      log(e.message!);
+    }
+  }
+
+  // Increase Brightness
+  Future<void> setMaxBrightness() async {
+    try {
+      await platform.invokeMethod('setMaxBrightness');
     } on PlatformException catch (e) {
       log(e.message!);
     }

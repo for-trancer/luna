@@ -23,6 +23,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast 
 
 class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var channel: MethodChannel
@@ -114,6 +115,21 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
 
             "openMobileDataSettings" -> {
                 openMobileDataSettings()
+                result.success(null)
+            }
+
+            "increaseBrightness" -> {
+                increaseBrightness()
+                result.success(null)
+            }
+
+            "decreaseBrightness" -> {
+                decreaseBrightness()
+                result.success(null)
+            }
+
+            "setMaxBrightness" -> {
+                setMaxBrightness()
                 result.success(null)
             }
 
@@ -289,6 +305,57 @@ class SettingsManager: FlutterPlugin, MethodChannel.MethodCallHandler {
         context.startActivity(intent)
         Log.d("Settings", "Opened mobile data settings for user to manually toggle mobile data.")
     }
+
+    private val BRIGHTNESS_STEP = 0.25f
+
+    // Increase Brightness
+    private fun increaseBrightness() {
+        if (Settings.System.canWrite(context)) {
+            val currentBrightness = Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 0)
+            val delta = (BRIGHTNESS_STEP * 255).toInt()  
+            val newBrightness = (currentBrightness + delta).coerceIn(0, 255)
+            Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, newBrightness)
+            Log.d("SettingsManager", "Brightness increased to: $newBrightness")
+        } else {
+            val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+            intent.data = Uri.parse("package:${context.packageName}")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            Toast.makeText(context, "Please allow permission to change brightness", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Decrease Brightness
+    private fun decreaseBrightness() {
+        if (Settings.System.canWrite(context)) {
+            val currentBrightness = Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 0)
+            val delta = (BRIGHTNESS_STEP * 255).toInt()
+            val newBrightness = (currentBrightness - delta).coerceIn(0, 255)
+            Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, newBrightness)
+            Log.d("SettingsManager", "Brightness decreased to: $newBrightness")
+        } else {
+             val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+             intent.data = Uri.parse("package:${context.packageName}")
+             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+             context.startActivity(intent)
+             Toast.makeText(context, "Please allow permission to change brightness", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Maximum Brightness
+    private fun setMaxBrightness() {
+        if (Settings.System.canWrite(context)) {
+            Settings.System.putInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, 255)
+            Log.d("SettingsManager", "Brightness set to maximum.")
+        } else {
+             val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS)
+             intent.data = Uri.parse("package:${context.packageName}")
+             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+             context.startActivity(intent)
+             Toast.makeText(context, "Please allow permission to change brightness", Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)

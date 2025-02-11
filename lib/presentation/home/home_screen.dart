@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:luna/core/colors/colors.dart';
 import 'package:luna/core/constants/constants.dart';
@@ -28,11 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ui overlay
     setUiOverlay();
-
-    // say greetings
-    // _homeService.sayGreetings();
 
     double size = MediaQuery.of(context).size.width;
 
