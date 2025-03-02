@@ -1,4 +1,4 @@
-// ignore_for_file: prefer_interpolation_to_compose_strings, deprecated_member_use
+// ignore_for_file: prefer_interpolation_to_compose_strings, deprecated_member_use, invalid_use_of_visible_for_testing_member
 
 import 'dart:convert';
 import 'dart:developer' as dev;
@@ -200,9 +200,17 @@ class HomeService {
 
   // Send text to server
   Future<void> sendText(String inputText) async {
+    bool isOffline = true;
     recognizedTextNotifier.value = inputText;
-    await _offlineService.fetchIntent(recognizedTextNotifier.value);
-    // await getPrediction();
+    if (isOffline) {
+      String intent =
+          await _offlineService.fetchIntent(recognizedTextNotifier.value);
+      dev.log(intent);
+      _offlineService.processIntent(intent, inputText);
+    }
+    // else {
+    //   await getPrediction();
+    // }
   }
 
   // Get intent prediction
@@ -466,9 +474,7 @@ class HomeService {
       }),
     );
 
-    // ignore: deprecated_member_use
     if (await canLaunch(emailLaunchUri.toString())) {
-      // ignore: deprecated_member_use
       await launch(emailLaunchUri.toString());
     } else {
       throw 'Could not launch $emailLaunchUri';
@@ -624,31 +630,22 @@ class HomeService {
         // Wifi On
         if (textData.contains("hotspot")) {
           outputText = "Opening Hotspot Settings";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
-          _settingsController.toggleHotspot();
+          hotspotSettings(outputText);
         } else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
           outputText = "Please Turn On Wifi";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
-          _settingsController.toggleWifi();
+          wifiSettings(outputText);
         }
         // BlueTooth On
         else if (word == '▁bluetooth') {
           outputText = "Turning on Bluetooth";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
-          _settingsController.toggleBluetooth(true);
+          bool result = true;
+          bluetoothSettings(outputText, result);
         }
       } else if (textData.contains("mobile data")) {
         outputText = "Opening mobile data settings";
-        _ttsService.speak(outputText);
-        responseTextNotifier.value = outputText;
-        _settingsController.openMobileDataSettings();
+        mobileDataSettings(outputText);
       } else {
-        outputText = "Sorry, I didn't quite catch that";
-        _ttsService.speak(outputText);
-        responseTextNotifier.value = outputText;
+        unclearInstruction();
       }
     }
     // Toggle Off
@@ -659,55 +656,39 @@ class HomeService {
         // Hotspot Off
         if (textData.contains("hotspot")) {
           outputText = "opening hotspot settings";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
-          _settingsController.toggleHotspot();
+          hotspotSettings(outputText);
         }
         // BlueTooth Off
         else if (word == '▁bluetooth') {
           outputText = "Turning off Bluetooth";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
-          _settingsController.toggleBluetooth(false);
+          bool result = false;
+          bluetoothSettings(outputText, result);
         }
         // Wifi Off
         else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
           outputText = "Please turn off wifi";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
-          _settingsController.toggleWifi();
+          wifiSettings(outputText);
         } else if (textData.contains("mobile data")) {
           outputText = "Opening mobile data settings";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
-          _settingsController.openMobileDataSettings();
+          mobileDataSettings(outputText);
         } else {
-          outputText = "Sorry, I didn't quite catch that";
-          _ttsService.speak(outputText);
-          responseTextNotifier.value = outputText;
+          unclearInstruction();
         }
       } else {
-        outputText = "Sorry, I didn't quite catch that";
-        _ttsService.speak(outputText);
-        responseTextNotifier.value = outputText;
+        unclearInstruction();
       }
     }
     // Audio Mute
     else if (intent == 'audio_volume_mute') {
-      outputText = "Muting audio";
-      responseTextNotifier.value = outputText;
-      _settingsController.toggleAudioMute(true);
+      audioVolumeMute();
     }
     // Audio Full
     else if (intent == 'audio_volume_up') {
-      _settingsController.toggleAudioFull();
-      outputText = "Volume set to full";
-      _ttsService.speak(outputText);
+      audioVolumeMax();
     }
     // Audio Volume Down
     else if (intent == 'audio_volume_down') {
-      _settingsController.toggleAudioDown();
-      _ttsService.speak("volume reduced");
+      audioVolumeReduce();
     }
     // Alarm Set
     else if (intent == "alarm_set") {
@@ -780,7 +761,6 @@ class HomeService {
         if (alarmTime != null) {
           _settingsController.toggleAlarm(alarmTime.year, alarmTime.month,
               alarmTime.day, alarmTime.hour, alarmTime.minute);
-          String alarmText;
           if (date != null && period != null) {
             outputText = "Alarm set for $time $period $date";
           } else if (date != null) {
@@ -792,9 +772,7 @@ class HomeService {
           responseTextNotifier.value = outputText;
         }
       } else {
-        outputText = "Please provide information about when to set the alarm";
-        _ttsService.speak(outputText);
-        responseTextNotifier.value = outputText;
+        unclearInstruction();
       }
     }
     // Open App
@@ -1236,29 +1214,7 @@ class HomeService {
     // Play Local Music
     else if (intent == "play_music") {
       if (results.isEmpty) {
-        String? _filePath;
-
-        await _ttsService.speak(
-            "unable to pick audio automatically,please select the audio file to play");
-
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.audio,
-        );
-
-        if (result != null && result.files.isNotEmpty) {
-          _filePath = result.files.first.path;
-        } else {
-          _ttsService.speak("File Not Found");
-        }
-
-        if (_filePath != null) {
-          try {
-            await _audioPlayer.setFilePath(_filePath);
-            _audioPlayer.play();
-          } catch (e) {
-            _ttsService.speak("Error Playing Audio");
-          }
-        }
+        await playLocalAudio();
       } else {
         // Play Youtube Music
         String? artistName;
@@ -1399,5 +1355,78 @@ class HomeService {
         _ttsService.speak(responseTextNotifier.value);
       }
     }
+  }
+
+  Future<void> playLocalAudio() async {
+    String? _filePath;
+    await _ttsService.speak(
+        "unable to pick audio automatically,please select the audio file to play");
+
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      _filePath = result.files.first.path;
+    } else {
+      _ttsService.speak("File Not Found");
+    }
+
+    if (_filePath != null) {
+      try {
+        await _audioPlayer.setFilePath(_filePath);
+        _audioPlayer.play();
+      } catch (e) {
+        _ttsService.speak("Error Playing Audio");
+      }
+    }
+  }
+
+  void audioVolumeReduce() {
+    _settingsController.toggleAudioDown();
+    _ttsService.speak("volume reduced");
+  }
+
+  void audioVolumeMax() {
+    outputText = "Volume set to full";
+    _settingsController.toggleAudioFull();
+    _ttsService.speak(outputText);
+  }
+
+  void unclearInstruction() {
+    outputText = "Sorry, I didn't quite catch that";
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+  }
+
+  void audioVolumeMute() {
+    outputText = "Muting audio";
+    responseTextNotifier.value = outputText;
+    _ttsService.speak(outputText);
+    _settingsController.toggleAudioMute(true);
+  }
+
+  void mobileDataSettings(String outputText) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.openMobileDataSettings();
+  }
+
+  void bluetoothSettings(String outputText, bool result) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.toggleBluetooth(result);
+  }
+
+  void wifiSettings(String outputText) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.toggleWifi();
+  }
+
+  void hotspotSettings(String outputText) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.toggleHotspot();
   }
 }

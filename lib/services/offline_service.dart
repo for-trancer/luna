@@ -186,4 +186,7 @@ class OfflineService {
     log("\nMax value: $maxValue");
     return maxIndex;
   }
+
+  // Process Intent
+  void processIntent(String intent, String textData) {}
 }
