@@ -20,12 +20,14 @@ import 'package:luna/core/constants/constants.dart';
 import 'package:luna/infrastructure/api_keys.dart';
 import 'package:luna/services/main_service.dart';
 import 'package:luna/presentation/home/services/Tts_Service.dart';
+import 'package:luna/services/offline_service.dart';
 import 'package:luna/services/settings_controller.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomeService {
   final MainService _service = MainService();
+  final OfflineService _offlineService = OfflineService();
   final TtsService _ttsService = TtsService();
   final SettingsController _settingsController = SettingsController();
   final SmsQuery query = SmsQuery();
@@ -199,7 +201,8 @@ class HomeService {
   // Send text to server
   Future<void> sendText(String inputText) async {
     recognizedTextNotifier.value = inputText;
-    await getPrediction();
+    await _offlineService.fetchIntent(recognizedTextNotifier.value);
+    // await getPrediction();
   }
 
   // Get intent prediction
