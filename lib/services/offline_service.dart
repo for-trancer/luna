@@ -3,7 +3,12 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:luna/presentation/home/services/home_service.dart';
+import 'package:luna/presentation/home/services/tts_service.dart';
+import 'package:luna/services/settings_controller.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 /// A simple MobileBERT tokenizer that loads vocabulary and configuration
@@ -66,6 +71,18 @@ class OfflineService {
   late Interpreter _interpreter;
   late Map<int, String> intentMapping;
   late MobileBertTokenizer tokenizer;
+
+  String outputText = "";
+
+  final SettingsController _settingsController = SettingsController();
+  final TtsService _ttsService = TtsService();
+
+  ValueNotifier<String> responseTextNotifier = ValueNotifier("");
+
+  OfflineService({
+    required this.responseTextNotifier,
+  });
+
   bool _isModelLoaded = false; // Flag to track model loading
 
   /// Loads the TFLite model, intent mapping, vocabulary, and tokenizer configuration.
@@ -182,9 +199,182 @@ class OfflineService {
     return maxIndex;
   }
 
-  // Process Intent (placeholder for further functionality)
-  void processIntent(String intent, String textData) {
-    // Implement your action logic here.
+  void processIntent(
+      String intent, List<Map<String, dynamic>> results, String textData) {
+    Map<String, dynamic> firstItem;
+    textData = textData.toLowerCase();
+    if (results.isNotEmpty) {
+      firstItem = results[0];
+    }
+    // Toggle On
+    if (textData.contains("turn on") || textData.contains("enable")) {
+      log("turn on settings");
+      String word = "";
+
+      for (var data in results) {
+        word = word + (data['word'].trim().toLowerCase());
+      }
+      // Hotspot On
+      if (textData.contains("hotspot")) {
+        outputText = "Opening Hotspot Settings";
+        hotspotSettings(outputText);
+      }
+      // Wifi On
+      else if (word == 'wifi' || textData.contains("wi-fi")) {
+        outputText = "Please Turn On Wifi";
+        wifiSettings(outputText);
+      }
+      // BlueTooth On
+      else if (word == 'bluetooth') {
+        outputText = "Turning on Bluetooth";
+        bool result = true;
+        bluetoothSettings(outputText, result);
+      }
+      // MobileData On
+      else if (textData.contains("mobile data")) {
+        outputText = "Opening mobile data settings";
+        mobileDataSettings(outputText);
+      } else {
+        unclearInstruction();
+      }
+    }
+    // Toggle Off
+    else if (intent == "iot_wemo_off") {
+      String word = "";
+      if (results.isNotEmpty) {
+        for (var data in results) {
+          word = word + (data['word'].trim().toLowerCase());
+        }
+      }
+      // Due to Model Error
+      if (textData.contains("turn on") || textData.contains("enable")) {
+        // Hotspot On
+        if (textData.contains("hotspot")) {
+          outputText = "Opening Hotspot Settings";
+          hotspotSettings(outputText);
+        }
+        // Wifi On
+        else if (word == 'wifi' || textData.contains("wi-fi")) {
+          outputText = "Please Turn On Wifi";
+          wifiSettings(outputText);
+        }
+        // BlueTooth On
+        else if (word == 'bluetooth') {
+          outputText = "Turning on Bluetooth";
+          bool result = true;
+          bluetoothSettings(outputText, result);
+        }
+        // MobileData On
+        else if (textData.contains("mobile data")) {
+          outputText = "Opening mobile data settings";
+          mobileDataSettings(outputText);
+        } else {
+          unclearInstruction();
+        }
+      }
+      // Off
+      if (textData.contains("hotspot")) {
+        outputText = "opening hotspot settings";
+        hotspotSettings(outputText);
+      }
+      // BlueTooth Off
+      else if (word == 'bluetooth' || textData.contains("bluetooth")) {
+        outputText = "Turning off Bluetooth";
+        bool result = false;
+        bluetoothSettings(outputText, result);
+      }
+      // Wifi Off
+      else if (word == 'wifi' || textData.contains("wi-fi")) {
+        outputText = "Please turn off wifi";
+        wifiSettings(outputText);
+      } else if (textData.contains("mobile data")) {
+        outputText = "Opening mobile data settings";
+        mobileDataSettings(outputText);
+      } else {
+        unclearInstruction();
+      }
+    }
+    // Audio Mute
+    else if (intent == 'audio_volume_mute') {
+      audioVolumeMute();
+    }
+    // Audio Full
+    else if (intent == 'audio_volume_up') {
+      audioVolumeMax();
+    }
+    // Audio Volume Down
+    else if (intent == 'audio_volume_down') {
+      audioVolumeReduce();
+    }
+  }
+
+  // Flashlight
+  Future<void> toggleFlashLight(bool enable) async {
+    final cameras = await availableCameras();
+
+    if (cameras.isNotEmpty) {
+      final cameraController =
+          CameraController(cameras.first, ResolutionPreset.high);
+      await cameraController.initialize();
+
+      if (enable) {
+        _ttsService.speak("turning on flashlight");
+        await cameraController.setFlashMode(FlashMode.torch);
+      } else {
+        _ttsService.speak("turning off flashlight");
+        await cameraController.setFlashMode(FlashMode.off);
+      }
+    } else {
+      _ttsService.speak("no flashlight is available for this device");
+    }
+  }
+
+  void audioVolumeReduce() {
+    _settingsController.toggleAudioDown();
+    _ttsService.speak("volume reduced");
+  }
+
+  void audioVolumeMax() {
+    outputText = "Volume set to full";
+    _settingsController.toggleAudioFull();
+    _ttsService.speak(outputText);
+  }
+
+  void unclearInstruction() {
+    outputText = "Sorry, I didn't quite catch that";
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+  }
+
+  void audioVolumeMute() {
+    outputText = "Muting audio";
+    responseTextNotifier.value = outputText;
+    _ttsService.speak(outputText);
+    _settingsController.toggleAudioMute(true);
+  }
+
+  void mobileDataSettings(String outputText) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.openMobileDataSettings();
+  }
+
+  void bluetoothSettings(String outputText, bool result) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.toggleBluetooth(result);
+  }
+
+  void wifiSettings(String outputText) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.toggleWifi();
+  }
+
+  void hotspotSettings(String outputText) {
+    _ttsService.speak(outputText);
+    responseTextNotifier.value = outputText;
+    _settingsController.toggleHotspot();
   }
 }
 

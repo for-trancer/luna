@@ -27,7 +27,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 class HomeService {
   final MainService _service = MainService();
-  final OfflineService _offlineService = OfflineService();
   final NERService _nerService = NERService();
   final TtsService _ttsService = TtsService();
   final SettingsController _settingsController = SettingsController();
@@ -214,16 +213,18 @@ class HomeService {
       return;
     }
     try {
+      OfflineService offlineService =
+          OfflineService(responseTextNotifier: responseTextNotifier);
       bool isOffline = true;
       if (isOffline) {
         String intent =
-            await _offlineService.fetchIntent(recognizedTextNotifier.value);
+            await offlineService.fetchIntent(recognizedTextNotifier.value);
         dev.log(intent);
-        _offlineService.processIntent(intent, userInput);
         List<Map<String, dynamic>> entities =
             await _nerService.fetchEntities(userInput);
-
         dev.log(entities.toString());
+
+        offlineService.processIntent(intent, entities, userInput);
       }
       //  else {
       //   final prediction = await _service.fetchIntentPrediction(userInput);
@@ -632,11 +633,13 @@ class HomeService {
       if (results.isNotEmpty) {
         dev.log(results[0]!.word.toString());
         final String word = results[0]!.word!.toLowerCase();
-        // Wifi On
+        // Hotpot On
         if (textData.contains("hotspot")) {
           outputText = "Opening Hotspot Settings";
           hotspotSettings(outputText);
-        } else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
+        }
+        // Wifi On
+        else if (word == '▁wifi' || textData.contains("Wi-Fi")) {
           outputText = "Please Turn On Wifi";
           wifiSettings(outputText);
         }
