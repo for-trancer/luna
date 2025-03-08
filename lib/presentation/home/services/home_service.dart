@@ -28,6 +28,7 @@ import 'package:url_launcher/url_launcher.dart';
 class HomeService {
   final MainService _service = MainService();
   final OfflineService _offlineService = OfflineService();
+  final NERService _nerService = NERService();
   final TtsService _ttsService = TtsService();
   final SettingsController _settingsController = SettingsController();
   final SmsQuery query = SmsQuery();
@@ -200,17 +201,8 @@ class HomeService {
 
   // Send text to server
   Future<void> sendText(String inputText) async {
-    bool isOffline = true;
     recognizedTextNotifier.value = inputText;
-    if (isOffline) {
-      String intent =
-          await _offlineService.fetchIntent(recognizedTextNotifier.value);
-      dev.log(intent);
-      _offlineService.processIntent(intent, inputText);
-    }
-    // else {
-    //   await getPrediction();
-    // }
+    await getPrediction();
   }
 
   // Get intent prediction
@@ -222,9 +214,22 @@ class HomeService {
       return;
     }
     try {
-      final prediction = await _service.fetchIntentPrediction(userInput);
-      dev.log(prediction.label.toString());
-      await processData(prediction.label!, userInput);
+      bool isOffline = true;
+      if (isOffline) {
+        String intent =
+            await _offlineService.fetchIntent(recognizedTextNotifier.value);
+        dev.log(intent);
+        _offlineService.processIntent(intent, userInput);
+        List<Map<String, dynamic>> entities =
+            await _nerService.fetchEntities(userInput);
+
+        dev.log(entities.toString());
+      }
+      //  else {
+      //   final prediction = await _service.fetchIntentPrediction(userInput);
+      //   dev.log(prediction.label.toString());
+      //   await processData(prediction.label!, userInput);
+      // }
     } catch (e) {
       // Handle error
       dev.log(e.toString());
