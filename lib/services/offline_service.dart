@@ -653,9 +653,13 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart'; // for compute()
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:luna/presentation/home/services/tts_service.dart';
 import 'package:luna/services/settings_controller.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// MobileBertTokenizer replicates the Hugging Face MobileBertTokenizer’s basic tokenization:
 /// - Lowercases input (do_lower_case=true)
@@ -842,6 +846,8 @@ class OfflineService {
 
   OfflineService({required this.responseTextNotifier});
 
+  final SmsQuery query = SmsQuery();
+
   Future<void> loadModel() async {
     // Load the model using the asset file.
     final interpreterOptions = InterpreterOptions();
@@ -934,8 +940,8 @@ class OfflineService {
     return maxIndex;
   }
 
-  void processIntent(
-      String intent, List<Map<String, dynamic>> results, String textData) {
+  Future<void> processIntent(String intent, List<Map<String, dynamic>> results,
+      String textData) async {
     textData = textData.toLowerCase();
     if (intent == "iot_hue_lightdim" || intent == "iot_hue_lighton") {
       if (textData.contains("flashlight")) {
@@ -1007,6 +1013,198 @@ class OfflineService {
     } else if (intent == 'audio_volume_down' ||
         (textData.contains("volume") && textData.contains("reduce"))) {
       audioVolumeReduce();
+    } else if (textData.contains("call")) {
+      if (results.isNotEmpty) {
+        String? contactName;
+        for (var model in results) {
+          if (model['entity'] == "B-person" ||
+              model['entity'] == "I-person" ||
+              model['entity'] == "B-relation" ||
+              model['entity'] == "B-business_name") {
+            contactName = (contactName ?? '') + (model['word']!.trim()) + (" ");
+          }
+        }
+        if (contactName != null) {
+          contactName = contactName.substring(0, contactName.length - 1);
+        }
+        log(contactName!);
+        getContactDetails(contactName);
+      } else {
+        String errorText = "Please tell me who to call?";
+        _ttsService.speak(errorText);
+        responseTextNotifier.value = errorText;
+      }
+    } else if (textData.contains("text") || textData.contains("text message")) {
+      String errorText;
+      if (results.isNotEmpty) {
+        String? contactName;
+        for (var model in results) {
+          if (model['entity'] == "B-person" ||
+              model['entity'] == "I-person" ||
+              model['entity'] == "B-relation") {
+            contactName = (contactName ?? "") + model['word'].trim() + (" ");
+          }
+        }
+        contactName = contactName!.substring(0, contactName.length - 1);
+        log(contactName);
+        sendTextMessage(contactName, "");
+      } else {
+        errorText = "Please tell me who to text?";
+        _ttsService.speak(errorText);
+        responseTextNotifier.value = errorText;
+      }
+    } // Read Message
+    else if (intent == "email_query" && textData.contains("read")) {
+      String outputText;
+      outputText = "Loading messages hang-tight!";
+      _ttsService.speak(outputText);
+      List<SmsMessage> messages = await query.querySms(
+        kinds: [SmsQueryKind.inbox, SmsQueryKind.sent],
+      );
+
+      messages.sort((a, b) => b.date!.compareTo(a.date!));
+
+      outputText = "";
+      responseTextNotifier.value = outputText;
+
+      for (int i = 0; i < 3; i++) {
+        outputText =
+            "\n" + messages[i].address! + " : \n\n${messages[i].body}\n";
+        responseTextNotifier.value = outputText;
+        responseTextNotifier.notifyListeners();
+        _ttsService.speak(
+            "message from ${messages[i].address!} saying that + ${messages[i].body}");
+        log("${messages[i].address} ${messages[i].body}");
+        await Future.delayed(Duration(seconds: messages[i].body!.length ~/ 8));
+      }
+    }
+  }
+
+  Future<List<Contact>> fetchContacts() async {
+    return await FlutterContacts.getContacts(withProperties: true);
+  }
+
+  Future<void> requestSmsPermission() async {
+    var status = await Permission.sms.status;
+
+    if (status.isDenied) {
+      await Permission.sms.request();
+    }
+
+    if (await Permission.sms.isGranted) {
+      log("SMS permission granted.");
+    } else {
+      log("SMS permission denied.");
+    }
+  }
+
+  Future<void> sendSMS(String phoneNumber, String message) async {
+    final Uri smsUri = Uri(
+      scheme: 'sms',
+      path: phoneNumber,
+      queryParameters: {'body': message},
+    );
+    requestSmsPermission();
+    // ignore: deprecated_member_use
+    if (await canLaunch(smsUri.toString())) {
+      // ignore: deprecated_member_use
+      await launch(smsUri.toString());
+    } else {
+      throw 'Could not launch $smsUri';
+    }
+  }
+
+  Future<void> sendTextMessage(String contactName, String textData) async {
+    List<Contact> contacts = await fetchContacts();
+    List<String> matchingNames = [];
+    List<Phone> phoneNumbers = [];
+    int matchCount = 0;
+
+    for (var contact in contacts) {
+      // Check for partial match
+      if (contact.displayName
+          .toLowerCase()
+          .contains(contactName.toLowerCase())) {
+        matchingNames.add(contact.displayName);
+        phoneNumbers.add(contact.phones.first);
+        matchCount++;
+      }
+    }
+
+    if (matchCount > 1) {
+      String errorText =
+          "There are multiple contacts saved under that name. Please specify which one to text";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+      await Future.delayed(const Duration(seconds: 6));
+
+      for (var name in matchingNames) {
+        await _ttsService.flutterTts.speak(name);
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    } else if (matchCount == 0) {
+      String errorText = "No contact named $contactName found!";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+    } else if (matchCount == 1) {
+      String successText = "Send text to ${matchingNames[0]}.";
+      await _ttsService.flutterTts.speak(successText);
+      responseTextNotifier.value = successText;
+      sendSMS(phoneNumbers[0].number, "");
+    }
+  }
+
+  Future<void> getContactDetails(String contactName) async {
+    List<Contact> contacts = await fetchContacts();
+    List<String> matchingNames = [];
+    List<Phone> phoneNumbers = [];
+    int matchCount = 0;
+
+    for (var contact in contacts) {
+      // Check for partial match
+      if (contact.displayName
+          .toLowerCase()
+          .contains(contactName.toLowerCase())) {
+        matchingNames.add(contact.displayName);
+        phoneNumbers.add(contact.phones.first);
+        matchCount++;
+      }
+    }
+
+    if (matchCount > 1) {
+      String errorText =
+          "There are multiple contacts saved under that name. Please specify which one to call";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+      await Future.delayed(const Duration(seconds: 5));
+
+      for (var name in matchingNames) {
+        await _ttsService.flutterTts.speak(name);
+        await Future.delayed(const Duration(seconds: 2));
+      }
+    } else if (matchCount == 0) {
+      String errorText = "No contact named $contactName found!";
+      await _ttsService.flutterTts.speak(errorText);
+      responseTextNotifier.value = errorText;
+    } else if (matchCount == 1) {
+      // If exactly one contact is found, handle the call
+      String successText = "Calling ${matchingNames[0]}.";
+      await _ttsService.flutterTts.speak(successText);
+      responseTextNotifier.value = successText;
+      makeCall(phoneNumbers[0].number);
+    }
+  }
+
+  Future<void> makeCall(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+
+    if (await canLaunch(launchUri.toString())) {
+      await launch(launchUri.toString());
+    } else {
+      throw 'Could not launch $launchUri';
     }
   }
 
