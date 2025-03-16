@@ -26,7 +26,6 @@ final List<String> greetings = [
   "Ahoy! Ready to set sail on a sea of information?",
   "Howdy! What adventure can I help you embark on today?",
   "Greetings, Earthling! How can I assist you from this galaxy?",
-  "Happy Tuesday! What can I help you with on this fine day?",
   "Greetings! Let’s make today productive together.",
   "Hello! Wishing you a fantastic day ahead. How can I assist?",
   "Hello! Remember, every day is a new opportunity. How can I help you seize it?",

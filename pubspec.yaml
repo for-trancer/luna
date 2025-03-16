@@ -43,18 +43,18 @@ dependencies:
   flutter_tts: ^4.2.1
   geocoding: ^3.0.0
   geolocator: ^13.0.2
-  http: ^1.2.2
+  http: ^0.13.5
   intl: ^0.20.1
   json_annotation: ^4.9.0
   just_audio: ^0.9.43
   open_file: ^3.5.10
   path_provider: ^2.1.5
-  permission_handler: ^11.3.1
-  porcupine_flutter: ^3.0.4
+  permission_handler: ^10.2.0
   shared_preferences: ^2.3.3
   speech_to_text: ^7.0.0
   tflite_flutter: ^0.11.0
   url_launcher: ^6.3.1
+  vosk_flutter: ^0.3.48
 
 dev_dependencies:
   build_runner: ^2.4.11
@@ -87,6 +87,7 @@ flutter:
     - assets/animated/introduction/
     - assets/mobilebert-luna/
     - assets/mobilebert-luna-ner/
+    - assets/models/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

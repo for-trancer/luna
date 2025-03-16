@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
@@ -46,6 +47,7 @@ class HomeService {
   String recognizedText = '';
   String imageUrl = '';
   bool isText = false;
+  bool isOffline = false;
 
   String outputText = "";
 
@@ -172,30 +174,90 @@ class HomeService {
   // Initialise speech and tts
   Future<void> initSpeechTts() async {
     _ttsService.initSpeech();
+    _ttsService.initOfflineSpeech();
     _ttsService.initializeTTS();
     sayGreetings();
     responseTextNotifier.value = greetings[index];
   }
 
-  // Start listening for speech
+  // // Start listening for speech
+  // Future<void> startListening() async {
+  //   recognizedTextNotifier.value = '';
+
+  //   if (!isListening) {
+  //     isListening = true;
+  //     await _ttsService.speechToText.listen(
+  //       onResult: (result) {
+  //         dev.log('result : ${result.recognizedWords}');
+  //         recognizedTextNotifier.value = result.recognizedWords;
+  //       },
+  //     );
+  //   }
+  // }
+
+  // // Stop listening for speech
+  // Future<void> stopListening() async {
+  //   if (isListening) {
+  //     await _ttsService.speechToText.stop();
+  //     isListening = false;
+  //   }
+  //   await getPrediction();
+  // }
+
+  String extractText(String jsonResult) {
+    final Map<String, dynamic> resultMap = jsonDecode(jsonResult);
+    final String text = resultMap['text'] ?? '';
+    return text;
+  }
+
   Future<void> startListening() async {
     recognizedTextNotifier.value = '';
+
     if (!isListening) {
       isListening = true;
-      await _ttsService.speechToText.listen(onResult: (result) {
-        dev.log('result : ${result.recognizedWords}');
-        recognizedTextNotifier.value = result.recognizedWords;
-      });
+      try {
+        final result = await InternetAddress.lookup('example.com');
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+          dev.log("device: online");
+          isOffline = false;
+          await _ttsService.speechToText.listen(
+            onResult: (result) {
+              dev.log('result : ${result.recognizedWords}');
+              recognizedTextNotifier.value = result.recognizedWords;
+            },
+          );
+          await getPrediction();
+        }
+      } on SocketException catch (_) {
+        dev.log("device: offline");
+        isOffline = true;
+        _ttsService.voskSpeech?.onPartial().listen((partial) async {
+          partial = extractText(partial);
+          dev.log('Offline partial: $partial');
+          recognizedTextNotifier.value = partial;
+        });
+        _ttsService.voskSpeech?.onResult().listen((finalResult) async {
+          finalResult = extractText(finalResult);
+          dev.log('Offline final result: $finalResult');
+          recognizedTextNotifier.value = finalResult;
+          if (finalResult.isNotEmpty) {
+            await getPrediction();
+          }
+        });
+        await _ttsService.voskSpeech?.start();
+      }
     }
   }
 
-  // Stop listening for speech
   Future<void> stopListening() async {
     if (isListening) {
-      await _ttsService.speechToText.stop();
+      if (isOffline) {
+        await _ttsService.voskSpeech?.stop();
+      } else {
+        await _ttsService.speechToText.stop();
+      }
       isListening = false;
     }
-    await getPrediction();
   }
 
   // Send text to server
@@ -212,7 +274,17 @@ class HomeService {
     if (userInput.isEmpty || userInput.trim().isEmpty) {
       return;
     }
+    // When Online
     try {
+      final result = await InternetAddress.lookup('example.com');
+      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+        final prediction = await _service.fetchIntentPrediction(userInput);
+        dev.log(prediction.label.toString());
+        await processData(prediction.label!, userInput);
+      }
+    }
+    // When Offline
+    on SocketException catch (_) {
       OfflineService offlineService =
           OfflineService(responseTextNotifier: responseTextNotifier);
       bool isOffline = true;
@@ -226,14 +298,6 @@ class HomeService {
 
         offlineService.processIntent(intent, entities, userInput);
       }
-      //  else {
-      //   final prediction = await _service.fetchIntentPrediction(userInput);
-      //   dev.log(prediction.label.toString());
-      //   await processData(prediction.label!, userInput);
-      // }
-    } catch (e) {
-      // Handle error
-      dev.log(e.toString());
     }
   }
 

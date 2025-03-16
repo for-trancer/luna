@@ -848,6 +848,53 @@ class OfflineService {
 
   final SmsQuery query = SmsQuery();
 
+  // Package Names
+  Map<String, String> appNameToPackageName = {
+    'spotify': 'com.spotify.music',
+    'youtube': 'com.google.android.youtube',
+    'facebook': 'com.facebook.katana',
+    'instagram': 'com.instagram.android',
+    'twitter': 'com.twitter.android',
+    'whatsapp': 'com.whatsapp',
+    'telegram': 'org.telegram.messenger',
+    'snapchat': 'com.snapchat.android',
+    'netflix': 'com.netflix.mediaclient',
+    'amazon': 'com.amazon.mShop.android.shopping',
+    'google maps': 'com.google.android.apps.maps',
+    'google drive': 'com.google.android.apps.docs',
+    'gmail': 'com.google.android.gm',
+    'linkedin': 'com.linkedin.android',
+    'pinterest': 'com.pinterest',
+    'reddit': 'com.reddit.frontpage',
+    'tiktok': 'com.zhiliaoapp.musically',
+    'discord': 'com.discord',
+    'slack': 'com.Slack',
+    'zoom': 'us.zoom.videomeetings',
+    'microsoft teams': 'com.microsoft.teams',
+    'viber': 'com.viber.voip',
+    'skype': 'com.skype.raider',
+    'uber': 'com.ubercab',
+    'lyft': 'me.lyft.android',
+    'ebay': 'com.ebay.mobile',
+    'yelp': 'com.yelp.android',
+    'spotify lite': 'com.spotify.lite',
+    'google photos': 'com.google.android.apps.photos',
+    'acrobat': 'com.adobe.reader',
+    'microsoft word': 'com.microsoft.office.word',
+    'microsoft excel': 'com.microsoft.office.excel',
+    'microsoft powerpoint': 'com.microsoft.office.powerpoint',
+    // System Apps
+    'camera': 'com.android.camera', // Default camera app
+    'settings': 'com.android.settings', // Settings app
+    'contacts': 'com.android.contacts', // Contacts app
+    'phone': 'com.android.dialer', // Phone app
+    'messages': 'com.android.mms', // Messaging app
+    'gallery': 'com.android.gallery3d', // Default gallery app
+    'clock': 'com.android.deskclock', // Clock app
+    'maps': 'com.google.android.apps.maps', // Google Maps
+    'play store': 'com.android.vending', // Google Play Store
+  };
+
   Future<void> loadModel() async {
     // Load the model using the asset file.
     final interpreterOptions = InterpreterOptions();
@@ -1078,10 +1125,106 @@ class OfflineService {
         await Future.delayed(Duration(seconds: messages[i].body!.length ~/ 8));
       }
     }
+    // Open App
+    else if (textData.contains("open")) {
+      String outputText;
+      textData = textData.toLowerCase();
+      String? appName;
+      String? packageName;
+      if (results.isNotEmpty) {
+        for (var model in results) {
+          appName = (appName ?? '') + (model['word'].trim().toLowerCase());
+        }
+        log(appName!);
+        packageName = getPackageName(appName);
+        if (packageName.isNotEmpty) {
+          outputText = "Opening $appName";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
+          _settingsController.openApp(packageName);
+        } else {
+          outputText = "App not found";
+          _ttsService.speak(outputText);
+          responseTextNotifier.value = outputText;
+        }
+      } else {
+        if (textData.contains("settings") || textData.contains("setting")) {
+          packageName = getPackageName("settings");
+          outputText = "Opening Settings";
+
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else if (textData.contains("email") || textData.contains("gmail")) {
+          packageName = getPackageName("gmail");
+
+          outputText = "Opening Gmail";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else if (textData.contains("message") ||
+            textData.contains("messages")) {
+          packageName = getPackageName("messsages");
+
+          outputText = "Opening Messages";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else if (textData.contains("contact") ||
+            textData.contains("contacts")) {
+          packageName = getPackageName("contacts");
+          outputText = "Opening Contacts";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else if (textData.contains("whatsapp")) {
+          packageName = getPackageName("whatsapp");
+
+          outputText = "Opening Whatsapp";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else if (textData.contains("discord")) {
+          packageName = getPackageName("discord");
+
+          outputText = "Opening Discord";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else if (textData.contains("google photos") ||
+            textData.contains("photos")) {
+          packageName = getPackageName("google photos");
+          outputText = "opening google photos";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else if (textData.contains("google map") ||
+            textData.contains("map")) {
+          packageName = getPackageName("maps");
+          outputText = "Opening Google Maps";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+          _settingsController.openApp(packageName);
+        } else {
+          outputText = "Please Specify The App Name";
+          responseTextNotifier.value = outputText;
+          _ttsService.speak(outputText);
+        }
+      }
+    } else {
+      String outputText = "Please connect to the internet";
+      responseTextNotifier.value = outputText;
+      _ttsService.speak(outputText);
+    }
   }
 
   Future<List<Contact>> fetchContacts() async {
     return await FlutterContacts.getContacts(withProperties: true);
+  }
+
+  // Fetch Package Name Of An App
+  String getPackageName(String appName) {
+    return appNameToPackageName[appName] ?? "";
   }
 
   Future<void> requestSmsPermission() async {
