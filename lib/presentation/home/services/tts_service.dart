@@ -52,7 +52,7 @@ class TtsService {
       final model = await vosk.createModel(modelPath);
       final recognizer = await vosk.createRecognizer(
         model: model,
-        sampleRate: 16000, // safer and more compatible
+        sampleRate: 16000,
       );
 
       voskSpeech = await vosk.initSpeechService(recognizer);

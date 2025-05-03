@@ -13,7 +13,6 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:luna/application/models/data/data_model.dart';
 import 'package:luna/application/models/image/image_model.dart';
@@ -180,7 +179,7 @@ class HomeService {
     responseTextNotifier.value = greetings[index];
   }
 
-  // // Start listening for speech
+  // Start listening for speech
   // Future<void> startListening() async {
   //   recognizedTextNotifier.value = '';
 
@@ -226,7 +225,6 @@ class HomeService {
               recognizedTextNotifier.value = result.recognizedWords;
             },
           );
-          await getPrediction();
         }
       } on SocketException catch (_) {
         dev.log("device: offline");
@@ -240,9 +238,6 @@ class HomeService {
           finalResult = extractText(finalResult);
           dev.log('Offline final result: $finalResult');
           recognizedTextNotifier.value = finalResult;
-          if (finalResult.isNotEmpty) {
-            await getPrediction();
-          }
         });
         await _ttsService.voskSpeech?.start();
       }
@@ -256,6 +251,7 @@ class HomeService {
       } else {
         await _ttsService.speechToText.stop();
       }
+      if (recognizedTextNotifier.value.isNotEmpty) await getPrediction();
       isListening = false;
     }
   }
@@ -432,9 +428,8 @@ class HomeService {
       queryParameters: {'body': message},
     );
     requestSmsPermission();
-    // ignore: deprecated_member_use
+
     if (await canLaunch(smsUri.toString())) {
-      // ignore: deprecated_member_use
       await launch(smsUri.toString());
     } else {
       throw 'Could not launch $smsUri';
@@ -595,12 +590,13 @@ class HomeService {
 
   // News Topic
   Future<Map<String, dynamic>> getTopicNews(String query) async {
-    DateTime today = DateTime.now();
-    DateTime dateMinus15Days = today.subtract(const Duration(days: 30));
-    String formattedDate = DateFormat('yyyy-MM-dd').format(dateMinus15Days);
-    dev.log(formattedDate);
+    // DateTime today = DateTime.now();
+    // DateTime dateMinus15Days = today.subtract(const Duration(days: 30));
+    // String formattedDate = DateFormat('yyyy-MM-dd').format(dateMinus15Days);
+    // dev.log(formattedDate);
     String url =
-        "https://newsapi.org/v2/everything?q=$query&from=$formattedDate&sortBy=popularity&apiKey=$newsApiKey";
+        // "https://newsapi.org/v2/everything?q=$query&from=$formattedDate&sortBy=popularity&apiKey=$newsApiKey";
+        "https://newsapi.org/v2/everything?q=$query&sortBy=popularity&apiKey=$newsApiKey";
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       dev.log(response.body);
@@ -641,10 +637,10 @@ class HomeService {
   // Nearby
   Future<Map<String, dynamic>> getNearbyDetails(String category) async {
     Position location = await getCurrentLocation();
-
     final String url =
         'https://api.geoapify.com/v2/places?categories=$category&filter=circle:${location.longitude},${location.latitude},5000&bias=proximity:${location.longitude},${location.latitude}&limit=5&apiKey=$geopifyApiKey';
 
+    dev.log(url);
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
@@ -1251,22 +1247,26 @@ class HomeService {
       String? topic;
       String? textData;
       Map<String, dynamic> response;
-
       if (results.isNotEmpty) {
         for (var model in results) {
           topic = (topic ?? "") + model!.word!.trim();
         }
-
         if (topic != null) {
           topic = topic.substring(1).replaceAll("▁", " ");
           response = await getTopicNews(topic);
-          _ttsService.speak("Here are the latest news articles about $topic");
           final articles = response['articles'] as List;
-          final article = articles[0];
-          _ttsService.flutterTts.setSpeechRate(0.5);
-          textData = "${article['title']} \n\n ${article['description']}";
-          responseTextNotifier.value = textData;
-          _ttsService.speak(textData);
+          if (articles.isNotEmpty) {
+            _ttsService.speak("Here are the latest news articles about $topic");
+            final article = articles[0];
+            _ttsService.flutterTts.setSpeechRate(0.5);
+            textData = "${article['title']} \n\n ${article['description']}";
+            responseTextNotifier.value = textData;
+            _ttsService.speak(textData);
+          } else {
+            String errorText = "No News Information About $topic";
+            _ttsService.speak(errorText);
+            responseTextNotifier.value = errorText;
+          }
         }
       } else {
         response = await getLocalNews();
@@ -1376,8 +1376,8 @@ class HomeService {
         }
         dev.log(data!);
 
-        category = categoryMapping[data] ?? "";
-        response = await getNearbyDetails(category);
+        String cat = categoryMapping[data.toLowerCase()] ?? "";
+        response = await getNearbyDetails(cat);
         String name;
         String street;
         String textData = "Here is the list of available $data:\n\n";
@@ -1472,9 +1472,9 @@ class HomeService {
   }
 
   void audioVolumeMute() {
+    _ttsService.speak(outputText);
     outputText = "Muting audio";
     responseTextNotifier.value = outputText;
-    _ttsService.speak(outputText);
     _settingsController.toggleAudioMute(true);
   }
 
